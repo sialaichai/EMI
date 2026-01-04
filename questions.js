@@ -638,14 +638,21 @@ class QuestionManager {
     
     loadLevel(level) {
         this.currentLevel = level;
-        // Deep copy questions to avoid modifying original
-        this.questions = [...emiLevels[level].questions];
-        // Shuffle
-        for (let i = this.questions.length - 1; i > 0; i--) {
+        
+        // 1. Get all questions for this level
+        const allQuestions = [...emiLevels[level].questions];
+        
+        // 2. Shuffle the full pool using Fisher-Yates algorithm
+        for (let i = allQuestions.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [this.questions[i], this.questions[j]] = [this.questions[j], this.questions[i]];
+            [allQuestions[i], allQuestions[j]] = [allQuestions[j], allQuestions[i]];
         }
+        
+        // 3. Select only the first 5 unique questions
+        this.questions = allQuestions.slice(0, 5);
+        
         this.currentQuestionIndex = 0;
+        
         // Grant an extra hint per level
         if(level > 1) this.hints++;
     }
@@ -655,13 +662,14 @@ class QuestionManager {
     }
 
     getCurrentQuestion() {
+        // Returns the question corresponding to the current index
         return this.questions[this.currentQuestionIndex];
     }
     
     checkAnswer(answerIndex) {
         const correct = this.questions[this.currentQuestionIndex].correct === answerIndex;
         if (correct) {
-            this.score += 100 * this.currentLevel; // More points for harder levels
+            this.score += 100 * this.currentLevel;
             this.currentQuestionIndex++;
         }
         return correct;
