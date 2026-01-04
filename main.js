@@ -8,13 +8,13 @@ let gameTimer;
 let currentLevel = 1;
 const MAX_LEVELS = 5;
 
-// Visual Themes
+// Visual Themes - UPDATED: Vibrant, Cheerful, Saturated Colors
 const ROOM_THEMES = {
-    1: { wall: 0x2c3e50, floor: 0x34495e, light: 0xFFFFFF }, // Chalkboard Style
-    2: { wall: 0x2E4053, floor: 0x1B2631, light: 0xCDDC39 }, // Deep Lab
-    3: { wall: 0x424242, floor: 0x212121, light: 0xFF9800 }, // Concrete/Industrial
-    4: { wall: 0x1A237E, floor: 0x0D123F, light: 0x00BCD4 }, // Blueprint Blue
-    5: { wall: 0x311B92, floor: 0x111111, light: 0xD500F9 }  // Deep Space
+    1: { wall: 0x27ae60, floor: 0x2ecc71, light: 0xFFFFFF }, // Emerald Green (Growth/Classic Chalkboard)
+    2: { wall: 0x2980b9, floor: 0x3498db, light: 0xFFEB3B }, // Ocean Blue (Calm Lab)
+    3: { wall: 0xd35400, floor: 0xe67e22, light: 0xFF9800 }, // Burnt Orange (Warm Energy)
+    4: { wall: 0x8e44ad, floor: 0x9b59b6, light: 0x00E5FF }, // Royal Purple (Creative/High Tech)
+    5: { wall: 0x16a085, floor: 0x1abc9c, light: 0xD500F9 }  // Teal/Turquoise (Quantum/Futuristic)
 };
 
 function init() {
@@ -65,10 +65,11 @@ function loadLevel(level) {
 
     const theme = ROOM_THEMES[level];
     
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    // Increased Ambient Light for brighter room
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
     
-    const pointLight = new THREE.PointLight(theme.light, 1, 40);
+    const pointLight = new THREE.PointLight(theme.light, 1.2, 50);
     pointLight.position.set(0, 10, 0);
     pointLight.castShadow = true;
     scene.add(pointLight);
@@ -87,37 +88,37 @@ function loadLevel(level) {
 // --- ORGANIC TEXTURE GENERATOR ---
 function createScienceTexture(baseColorHex, type) {
     const canvas = document.createElement('canvas');
-    // Larger canvas for better detail
     canvas.width = 1024;
     canvas.height = 1024;
     const ctx = canvas.getContext('2d');
 
     const baseColor = new THREE.Color(baseColorHex);
     
-    // 1. Organic Background (Noise & Grunge)
+    // 1. Solid Vibrant Background
     ctx.fillStyle = '#' + baseColor.getHexString();
     ctx.fillRect(0, 0, 1024, 1024);
     
-    // Add noise layers for "texture"
+    // 2. Subtle Noise (Reduced opacity to keep colors bright)
     for(let i=0; i<4000; i++) {
         const x = Math.random() * 1024;
         const y = Math.random() * 1024;
         const size = Math.random() * 3 + 1;
-        const opacity = Math.random() * 0.05;
-        // Randomize slightly lighter or darker than base
+        // Very low opacity to avoid "muddy/grey" look
+        const opacity = Math.random() * 0.03; 
+        
         ctx.fillStyle = Math.random() > 0.5 ? 
             `rgba(255,255,255,${opacity})` : 
             `rgba(0,0,0,${opacity})`;
         ctx.fillRect(x, y, size, size);
     }
 
-    // 2. Smudges (Cloud-like Erasure marks)
-    for(let i=0; i<20; i++) {
+    // 3. Soft Erasure marks (Subtle)
+    for(let i=0; i<15; i++) {
         const x = Math.random() * 1024;
         const y = Math.random() * 1024;
         const rad = Math.random() * 100 + 50;
         const grd = ctx.createRadialGradient(x, y, 0, x, y, rad);
-        grd.addColorStop(0, `rgba(255,255,255,0.03)`);
+        grd.addColorStop(0, `rgba(255,255,255,0.05)`); // Very subtle white
         grd.addColorStop(1, `rgba(255,255,255,0)`);
         ctx.fillStyle = grd;
         ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI*2); ctx.fill();
@@ -134,92 +135,81 @@ function createScienceTexture(baseColorHex, type) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // 3. Draw Elements (Walls vs Floors)
     if (type === 'wall') {
         
-        // A. The "Ghost" Layer (Looks like erased chalk)
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-        for(let i=0; i<15; i++) {
+        // A. Background "Chalk" Layer (Faint)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)'; 
+        for(let i=0; i<10; i++) {
             const x = Math.random() * 1024;
             const y = Math.random() * 1024;
             ctx.font = `italic ${Math.random()*40 + 20}px Times New Roman`;
             ctx.save();
             ctx.translate(x, y);
-            ctx.rotate((Math.random() - 0.5) * 1.0); 
+            ctx.rotate((Math.random() - 0.5) * 0.5); 
             ctx.fillText(equations[Math.floor(Math.random() * equations.length)], 0, 0);
             ctx.restore();
         }
 
-        // B. The "Fresh" Layer
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; // Brighter
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.lineWidth = 2;
+        // B. Foreground "Fresh" Layer (Bright White)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; 
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.lineWidth = 3;
 
         // Draw Equations
-        for(let i=0; i<8; i++) {
-            const x = Math.random() * 800 + 112; // Keep somewhat central
+        for(let i=0; i<6; i++) {
+            const x = Math.random() * 800 + 112; 
             const y = Math.random() * 800 + 112;
-            ctx.font = `bold ${Math.random()*30 + 20}px Courier New`;
+            ctx.font = `bold ${Math.random()*30 + 30}px Courier New`;
             ctx.save();
             ctx.translate(x, y);
-            ctx.rotate((Math.random() - 0.5) * 0.2); // Slight organic tilt
+            ctx.rotate((Math.random() - 0.5) * 0.2); 
             ctx.fillText(equations[Math.floor(Math.random() * equations.length)], 0, 0);
             ctx.restore();
         }
 
         // Draw Diagrams (Organic Scribbles)
-        for(let i=0; i<5; i++) {
-            const cx = Math.random() * 1024;
-            const cy = Math.random() * 1024;
+        for(let i=0; i<4; i++) {
+            const cx = Math.random() * 900 + 50;
+            const cy = Math.random() * 900 + 50;
             
             ctx.beginPath();
             if (Math.random() > 0.5) {
-                // Solenoid / Coil Drawing
+                // Solenoid / Coil
                 let startX = cx - 50;
                 ctx.moveTo(startX, cy);
-                for(let j=0; j<10; j++) {
-                    startX += 10;
-                    ctx.bezierCurveTo(startX, cy-20, startX+5, cy+20, startX+10, cy);
+                for(let j=0; j<8; j++) {
+                    startX += 12;
+                    ctx.bezierCurveTo(startX, cy-25, startX+6, cy+25, startX+12, cy);
                 }
             } else {
-                // Vector Field Arrows
-                ctx.moveTo(cx, cy);
-                ctx.lineTo(cx + 40, cy - 40);
-                ctx.moveTo(cx + 40, cy - 40);
-                ctx.lineTo(cx + 30, cy - 40);
-                ctx.moveTo(cx + 40, cy - 40);
-                ctx.lineTo(cx + 40, cy - 30);
-                // Circle around it
-                ctx.moveTo(cx+50, cy);
-                ctx.arc(cx, cy, 30, 0, Math.PI*2);
+                // Flux Field
+                ctx.arc(cx, cy, 40, 0, Math.PI*2);
+                ctx.moveTo(cx-50, cy); ctx.lineTo(cx+50, cy);
+                ctx.moveTo(cx, cy-50); ctx.lineTo(cx, cy+50);
             }
             ctx.stroke();
         }
 
     } else {
-        // FLOOR - Technical but worn
-        
-        // Faint Grid
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.lineWidth = 1;
+        // FLOOR - Technical Grid (Cleaner look)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        for(let i=0; i<=1024; i+=64) {
-            // Add jitter to lines so they aren't perfect
-            ctx.moveTo(i + Math.random()*2, 0); ctx.lineTo(i - Math.random()*2, 1024);
-            ctx.moveTo(0, i + Math.random()*2); ctx.lineTo(1024, i - Math.random()*2);
+        for(let i=0; i<=1024; i+=128) { // Wider grid
+            ctx.moveTo(i, 0); ctx.lineTo(i, 1024);
+            ctx.moveTo(0, i); ctx.lineTo(1024, i);
         }
         ctx.stroke();
 
         // Magnetic Field Markers
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-        ctx.font = '30px Arial';
-        for(let x=64; x<1024; x+=192) {
-            for(let y=64; y<1024; y+=192) {
-                // Skip some to make it look organic/worn
-                if(Math.random() > 0.3) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.font = '40px Arial';
+        for(let x=64; x<1024; x+=256) {
+            for(let y=64; y<1024; y+=256) {
+                if(Math.random() > 0.4) {
                     if(Math.random() > 0.5) {
-                        ctx.fillText("×", x + Math.random()*10, y + Math.random()*10);
-                        ctx.beginPath(); ctx.arc(x, y, 20, 0, Math.PI*2); ctx.stroke();
+                        ctx.fillText("×", x, y);
+                        ctx.beginPath(); ctx.arc(x, y, 25, 0, Math.PI*2); ctx.stroke();
                     } else {
                         ctx.fillText("•", x, y);
                     }
@@ -229,10 +219,7 @@ function createScienceTexture(baseColorHex, type) {
     }
 
     const texture = new THREE.CanvasTexture(canvas);
-    // No repeating - we stretch one unique "painting" across the whole wall/floor
-    // to avoid tiling artifacts.
     texture.minFilter = THREE.LinearFilter;
-    
     return texture;
 }
 
@@ -242,7 +229,6 @@ function createRoom(theme) {
     const roomHeight = 10;
     
     // GENERATE UNIQUE TEXTURES FOR EVERY SURFACE
-    // This ensures no two walls look the same
     const floorTexture = createScienceTexture(theme.floor, 'floor');
     
     const backWallTex = createScienceTexture(theme.wall, 'wall');
@@ -253,7 +239,7 @@ function createRoom(theme) {
         const geo = new THREE.BoxGeometry(w, h, d);
         const mat = new THREE.MeshStandardMaterial({ 
             map: map, 
-            roughness: 0.8, // Rougher walls
+            roughness: 0.5, // Reduced roughness for brighter reflection
             metalness: 0.1 
         });
         const mesh = new THREE.Mesh(geo, mat);
@@ -269,8 +255,8 @@ function createRoom(theme) {
     const floorGeo = new THREE.PlaneGeometry(roomWidth, roomDepth);
     const floorMat = new THREE.MeshStandardMaterial({ 
         map: floorTexture, 
-        roughness: 0.6,
-        metalness: 0.3
+        roughness: 0.4,
+        metalness: 0.1
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
@@ -280,13 +266,13 @@ function createRoom(theme) {
 
     // Ceiling
     const ceilingGeo = new THREE.PlaneGeometry(roomWidth, roomDepth);
-    const ceilingMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+    const ceilingMat = new THREE.MeshStandardMaterial({ color: 0xDDDDDD }); // Lighter ceiling
     const ceiling = new THREE.Mesh(ceilingGeo, ceilingMat);
     ceiling.rotation.x = Math.PI / 2;
     ceiling.position.y = roomHeight/2;
     scene.add(ceiling);
 
-    // Walls - Pass unique textures
+    // Walls
     createWall(roomWidth, roomHeight, 0.5, backWallTex, 0, 0, -roomDepth/2); 
     createWall(roomDepth, roomHeight, 0.5, leftWallTex, -roomWidth/2, 0, 0, Math.PI/2); 
     createWall(roomDepth, roomHeight, 0.5, rightWallTex, roomWidth/2, 0, 0, Math.PI/2); 
@@ -379,7 +365,7 @@ function createInteractiveObjects(level) {
         if (config.type === 'wall') {
             const group = new THREE.Group();
             
-            // Base geometry (Flat against wall)
+            // Base geometry
             const base = new THREE.Mesh(
                 new THREE.BoxGeometry(1.5, 1.5, 0.3), 
                 new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 })
