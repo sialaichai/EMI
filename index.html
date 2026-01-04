@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Physics Escape Room</title>
+    <title>Physics Escape Room: Induction Protocol</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
@@ -12,19 +12,11 @@
 </head>
 <body>
     <div id="game-container">
-    <div id="hud">
-        <div id="timer">Time: 60:00</div>
-        <div id="score">Score: 0</div>
-        <div id="hints">Hints: 3</div>
-        <div id="level-display">Level: 1</div>
-    </div>
-
-
-<div id="start-screen">
-    <h1>Physics Escape Room: Induction Protocol</h1>
-    <p>Master Electromagnetic Induction to traverse the 5 security sectors.</p>
-    <button id="start-button">Start Protocol</button>
-    </div>
+        <div id="hud">
+            <div id="timer">Time: 60:00</div>
+            <div id="score">Score: 0</div>
+            <div id="hints">Hints: 3</div>
+            <div id="level-display">Level: 1</div>
         </div>
         
         <div id="question-modal" class="modal">
@@ -39,28 +31,29 @@
         </div>
         
         <div id="start-screen">
-            <h1>Physics Escape Room</h1>
-            <p>Solve physics problems to escape the room!</p>
-           
-            <button id="start-button">Start Game</button>
+            <h1>Physics Escape Room: Induction Protocol</h1>
+            <p>Master Electromagnetic Induction to traverse the 5 security sectors.</p>
+            
             <div class="instructions">
-                <h3>Instructions:</h3>
-                <p>• Click on interactive objects to solve physics problems</p>
-                <p>• Solve all problems to unlock the door</p>
-                <p>• Use hints wisely</p>
-                <p>• Complete before time runs out</p>
+                <h3>Mission Instructions:</h3>
+                <p>• Click on <strong>3 distinct objects</strong> in the room to find problems.</p>
+                <p>• Solve all 3 to unlock the blast door.</p>
+                <p>• Click the door to advance to the next Sector.</p>
+                <p>• Complete all 5 Sectors (Rooms) to escape.</p>
             </div>
+
+            <button id="start-button">Initiate Protocol</button>
         </div>
         
         <div id="end-screen" class="hidden">
-            <h1>Congratulations!</h1>
+            <h1>Simulation Ended</h1>
             <p id="end-message"></p>
             <p id="final-score"></p>
-            <button id="restart-button">Play Again</button>
+            <button id="restart-button">Restart Protocol</button>
         </div>
         
         <div id="controls">
-            <p>WASD to move | Mouse to look | Click objects to interact</p>
+            <p>Left Click to Interact | Right Click + Drag to Rotate Camera | Scroll to Zoom</p>
         </div>
     </div>
     
