@@ -10,64 +10,68 @@ const MAX_LEVELS = 5;
 
 // Visual Themes for each room
 const ROOM_THEMES = {
-    1: { wall: 0xE0E0E0, floor: 0x8D6E63, light: 0xFFFFFF }, // Classroom (White/Wood)
-    2: { wall: 0x78909C, floor: 0x37474F, light: 0xCDDC39 }, // Lab (Blue-Grey/Dark)
-    3: { wall: 0x424242, floor: 0x212121, light: 0xFF9800 }, // Power Plant (Dark Grey/Orange)
-    4: { wall: 0x263238, floor: 0x000000, light: 0x00BCD4 }, // High Voltage (Dark Blue/Cyan)
-    5: { wall: 0x1A237E, floor: 0x000000, light: 0xD500F9 }  // Quantum Core (Deep Blue/Purple)
+    1: { wall: 0xE0E0E0, floor: 0x8D6E63, light: 0xFFFFFF }, // Classroom
+    2: { wall: 0x78909C, floor: 0x37474F, light: 0xCDDC39 }, // Lab
+    3: { wall: 0x424242, floor: 0x212121, light: 0xFF9800 }, // Power Plant
+    4: { wall: 0x263238, floor: 0x000000, light: 0x00BCD4 }, // High Voltage
+    5: { wall: 0x1A237E, floor: 0x000000, light: 0xD500F9 }  // Quantum Core
 };
 
 function init() {
     scene = new THREE.Scene();
     
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 1.6, 5);
+    // Adjusted Camera for Deeper Room view
+    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 6, 18); // Moved back and up to see over the "near" area
     
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.outputEncoding = THREE.sRGBEncoding; // Better colors
+    renderer.outputEncoding = THREE.sRGBEncoding;
     document.getElementById('game-container').appendChild(renderer.domElement);
     
     controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
-    controls.minDistance = 1;
-    controls.maxDistance = 10;
+    controls.minDistance = 5;
+    controls.maxDistance = 30;
     controls.maxPolarAngle = Math.PI / 2 - 0.1;
+    // Target the center of the room so rotation feels natural
+    controls.target.set(0, 0, 0); 
     
     questionManager = new QuestionManager();
     setupEventListeners();
     
-    // Initial Render Loop
     animate();
     window.addEventListener('resize', onWindowResize);
     
-    // Show start screen
-    document.getElementById('start-screen').classList.remove('hidden');
+    // Show start screen if not already hidden (reloads)
+    const startScreen = document.getElementById('start-screen');
+    if(startScreen) startScreen.classList.remove('hidden');
 }
 
 function loadLevel(level) {
     currentLevel = level;
     
-    // 1. clear existing scene objects
+    // 1. Clear existing scene
     while(scene.children.length > 0){ 
         scene.remove(scene.children[0]); 
     }
-    objects = []; // Clear interactive objects array
+    objects = []; 
 
     // 2. Set Background
-    scene.background = new THREE.Color(0x000000); // Dark space outside room
+    scene.background = new THREE.Color(0x111111);
 
-    // 3. Setup Lights based on Theme
+    // 3. Setup Lights
     const theme = ROOM_THEMES[level];
     
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
     scene.add(ambientLight);
     
-    const pointLight = new THREE.PointLight(theme.light, 1, 20);
-    pointLight.position.set(0, 4, 0);
+    // Move main light to center of the deeper room
+    const pointLight = new THREE.PointLight(theme.light, 1, 40);
+    pointLight.position.set(0, 8, 0);
     pointLight.castShadow = true;
     scene.add(pointLight);
 
@@ -80,13 +84,16 @@ function loadLevel(level) {
     
     // 6. Update UI
     updateHUD();
-    document.getElementById('level-display').textContent = `Level: ${level} - ${questionManager.getTheme()}`;
+    const levelDisplay = document.getElementById('level-display');
+    if(levelDisplay) levelDisplay.textContent = `Level: ${level} - ${questionManager.getTheme()}`;
 }
 
 function createRoom(theme) {
-    const roomSize = 10;
+    // New Dimensions: Deeper and slightly wider
+    const roomWidth = 14;
+    const roomDepth = 20; 
+    const roomHeight = 10;
     
-    // Helper to create walls with Standard Material (Reacts to light better)
     const createWall = (w, h, d, color, x, y, z, rotY = 0) => {
         const geo = new THREE.BoxGeometry(w, h, d);
         const mat = new THREE.MeshStandardMaterial({ 
@@ -104,7 +111,7 @@ function createRoom(theme) {
     };
 
     // Floor
-    const floorGeo = new THREE.PlaneGeometry(roomSize, roomSize);
+    const floorGeo = new THREE.PlaneGeometry(roomWidth, roomDepth);
     const floorMat = new THREE.MeshStandardMaterial({ 
         color: theme.floor, 
         roughness: 0.8,
@@ -112,89 +119,107 @@ function createRoom(theme) {
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -roomSize/2;
+    floor.position.y = -roomHeight/2 + 0.1; // Slightly adjust to align with walls
     floor.receiveShadow = true;
     scene.add(floor);
 
     // Ceiling
     const ceiling = floor.clone();
     ceiling.rotation.x = Math.PI / 2;
-    ceiling.position.y = roomSize/2;
+    ceiling.position.y = roomHeight/2;
     scene.add(ceiling);
 
     // Walls
     const wallThick = 0.5;
-    createWall(roomSize, roomSize, wallThick, theme.wall, 0, 0, -roomSize/2); // Back
-    createWall(roomSize, roomSize, wallThick, theme.wall, -roomSize/2, 0, 0, Math.PI/2); // Left
-    createWall(roomSize, roomSize, wallThick, theme.wall, roomSize/2, 0, 0, Math.PI/2); // Right
+    
+    // Back Wall (Far end)
+    createWall(roomWidth, roomHeight, wallThick, theme.wall, 0, 0, -roomDepth/2); 
+    
+    // Left Wall
+    createWall(roomDepth, roomHeight, wallThick, theme.wall, -roomWidth/2, 0, 0, Math.PI/2);
+    
+    // Right Wall
+    createWall(roomDepth, roomHeight, wallThick, theme.wall, roomWidth/2, 0, 0, Math.PI/2);
 
-    createDoor(theme);
+    // NOTE: "Front" wall (near camera) is intentionally omitted to prevent blocking view
+
+    createSideDoor(roomWidth, roomDepth);
 }
 
-// Check your main.js for this specific function
-function createDoor(theme) {
-    const doorGeometry = new THREE.BoxGeometry(3, 5, 0.2);
+function createSideDoor(roomWidth, roomDepth) {
+    const doorW = 4;
+    const doorH = 6;
+    
+    // Create Door Geometry
+    const doorGeometry = new THREE.BoxGeometry(doorW, doorH, 0.2);
     const doorMaterial = new THREE.MeshStandardMaterial({ 
         color: 0x8B4513, 
         roughness: 0.4 
     });
     const door = new THREE.Mesh(doorGeometry, doorMaterial);
-    door.position.set(0, -2.5, 5); // Front of room
     
-    // IMPORTANT: Ensure these properties are set
-    door.userData = { type: 'door', locked: true }; 
+    // Position: On the Right Wall (x = roomWidth/2), towards the back (z = -5)
+    // Rotating it 90 degrees (PI/2) to align with the side wall
+    door.position.set(roomWidth/2 - 0.2, -2, -5); 
+    door.rotation.y = Math.PI / 2;
     
+    door.userData = { type: 'door', locked: true };
     scene.add(door);
-    objects.push(door); // IMPORTANT: This makes the door clickable
+    objects.push(door); // Clickable
     
-    // Frame (Visual only)
-    const frameGeo = new THREE.BoxGeometry(3.5, 6, 0.3);
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+    // Door Frame
+    const frameGeo = new THREE.BoxGeometry(doorW + 0.5, doorH + 0.5, 0.3);
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
     const frame = new THREE.Mesh(frameGeo, frameMat);
-    frame.position.set(0, -2, 5);
+    frame.position.copy(door.position);
+    frame.position.x += 0.1; // Slightly offset into wall
+    frame.rotation.y = Math.PI / 2;
     scene.add(frame);
 }
 
 function createInteractiveObjects(level) {
-    // Generate 3 distinct objects per room for the 3 questions
+    // Distributed along the Z-axis (Depth)
     const positions = [
-        { x: -2, y: -4, z: -2 },
-        { x: 2, y: -4, z: -2 },
-        { x: -2, y: -4, z: 2 }
+        { x: -3, y: -4, z: 6 },   // Near (Close to camera)
+        { x: 3, y: -4, z: 0 },    // Middle
+        { x: -3, y: -4, z: -6 }   // Far (Near back wall)
     ];
 
     positions.forEach((pos, index) => {
         let mesh;
         
         if (level === 1 || level === 2) {
-            // Basic Shapes (Cubes/Spheres) for Levels 1-2
-            const geo = index === 0 ? new THREE.BoxGeometry(1, 1, 1) : 
-                       index === 1 ? new THREE.SphereGeometry(0.6) :
-                       new THREE.CylinderGeometry(0.5, 0.5, 1);
-            const mat = new THREE.MeshStandardMaterial({ color: Math.random() * 0xffffff });
+            // Basic Shapes
+            const geo = index === 0 ? new THREE.BoxGeometry(1.5, 1.5, 1.5) : 
+                       index === 1 ? new THREE.SphereGeometry(1) :
+                       new THREE.CylinderGeometry(0.8, 0.8, 1.5);
+            const mat = new THREE.MeshStandardMaterial({ 
+                color: Math.random() * 0xffffff,
+                roughness: 0.5,
+                metalness: 0.5
+            });
             mesh = new THREE.Mesh(geo, mat);
             
         } else {
-            // Complex Shapes (Coils/Toroids) for Levels 3-5
+            // Advanced Sci-Fi Shapes for higher levels
             if (index === 0) {
-                // Represents a Coil
-                const geo = new THREE.TorusGeometry(0.5, 0.2, 16, 100);
-                const mat = new THREE.MeshStandardMaterial({ color: 0xB87333, metalness: 0.8, roughness: 0.2 }); // Copper
+                // Coil / Torus
+                const geo = new THREE.TorusKnotGeometry(0.6, 0.2, 64, 8);
+                const mat = new THREE.MeshStandardMaterial({ color: 0xB87333, metalness: 0.9, roughness: 0.1 }); 
                 mesh = new THREE.Mesh(geo, mat);
             } else if (index === 1) {
-                // Represents a Magnet
-                const geo = new THREE.BoxGeometry(0.4, 0.4, 1.5);
-                const mat = new THREE.MeshStandardMaterial({ color: 0xFF0000 }); // Red part of magnet
+                // Floating Magnet
+                const geo = new THREE.BoxGeometry(0.6, 0.6, 2);
+                const mat = new THREE.MeshStandardMaterial({ color: 0xFF0000 }); 
                 mesh = new THREE.Mesh(geo, mat);
-                // Add blue part as child
-                const blueGeo = new THREE.BoxGeometry(0.4, 0.4, 0.75);
+                const blueGeo = new THREE.BoxGeometry(0.6, 0.6, 1);
                 const blueMesh = new THREE.Mesh(blueGeo, new THREE.MeshStandardMaterial({color: 0x0000FF}));
-                blueMesh.position.z = 0.375;
+                blueMesh.position.z = 0.5;
                 mesh.add(blueMesh);
             } else {
-                // Represents Flux/Generator
-                const geo = new THREE.IcosahedronGeometry(0.6, 0);
-                const mat = new THREE.MeshStandardMaterial({ color: 0x00FF00, wireframe: true });
+                // Core
+                const geo = new THREE.OctahedronGeometry(1, 0);
+                const mat = new THREE.MeshStandardMaterial({ color: 0x00FF00, wireframe: true, emissive: 0x002200 });
                 mesh = new THREE.Mesh(geo, mat);
             }
         }
@@ -205,11 +230,11 @@ function createInteractiveObjects(level) {
         scene.add(mesh);
         objects.push(mesh);
         
-        // Add a simple pedestal
-        const pedGeo = new THREE.CylinderGeometry(0.8, 1, 1, 32);
+        // Pedestal
+        const pedGeo = new THREE.CylinderGeometry(1, 1.2, 1, 32);
         const pedMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
         const ped = new THREE.Mesh(pedGeo, pedMat);
-        ped.position.set(pos.x, pos.y - 1, pos.z);
+        ped.position.set(pos.x, pos.y - 1.25, pos.z);
         ped.receiveShadow = true;
         scene.add(ped);
     });
@@ -218,15 +243,19 @@ function createInteractiveObjects(level) {
 function startGame() {
     questionManager.reset();
     
-    document.getElementById('start-screen').classList.add('hidden');
-    document.getElementById('end-screen').classList.add('hidden');
-    document.getElementById('question-modal').style.display = 'none';
+    // Hide screens
+    ['start-screen', 'end-screen'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.classList.add('hidden');
+    });
+    
+    const qModal = document.getElementById('question-modal');
+    if(qModal) qModal.style.display = 'none';
     
     gameActive = true;
     timeRemaining = 3600;
     updateTimerDisplay();
     
-    // Load Level 1
     loadLevel(1);
     
     clearInterval(gameTimer);
@@ -241,17 +270,19 @@ function startGame() {
     updateHUD();
 }
 
-// ... (Keep updateTimerDisplay and updateHUD from original) ...
 function updateTimerDisplay() {
+    const timerEl = document.getElementById('timer');
+    if(!timerEl) return;
     const minutes = Math.floor(timeRemaining / 60);
     const seconds = timeRemaining % 60;
-    document.getElementById('timer').textContent = 
-        `Time: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    timerEl.textContent = `Time: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
 function updateHUD() {
-    document.getElementById('score').textContent = `Score: ${questionManager.score}`;
-    document.getElementById('hints').textContent = `Hints: ${questionManager.hints}`;
+    const scoreEl = document.getElementById('score');
+    const hintsEl = document.getElementById('hints');
+    if(scoreEl) scoreEl.textContent = `Score: ${questionManager.score}`;
+    if(hintsEl) hintsEl.textContent = `Hints: ${questionManager.hints}`;
 }
 
 function onObjectClick(event) {
@@ -268,15 +299,13 @@ function onObjectClick(event) {
     
     if (intersects.length > 0) {
         const object = intersects[0].object;
-        
-        // Handle parent/child grouping (like the magnet)
         const target = object.parent && object.parent.userData.type ? object.parent : object;
 
         if (target.userData.type === 'interactive') {
             showQuestion(target);
         } else if (target.userData.type === 'door') {
             if (target.userData.locked) {
-                alert('Door Locked! Solve all questions in this room.');
+                alert('Door Locked! Solve all questions in this sector.');
             } else {
                 nextLevel();
             }
@@ -285,34 +314,38 @@ function onObjectClick(event) {
 }
 
 function showQuestion(object) {
-    // Check if we have questions left for this specific object interaction
-    // Note: In this simple version, we just pull the next available question
     if (!questionManager.hasMoreQuestions()) {
         unlockDoor();
         return;
     }
     
     const question = questionManager.getCurrentQuestion();
-    document.getElementById('question-text').textContent = question.question;
+    const txtEl = document.getElementById('question-text');
+    if(txtEl) txtEl.textContent = question.question;
     
     const optionsContainer = document.getElementById('options-container');
-    optionsContainer.innerHTML = '';
+    if(optionsContainer) {
+        optionsContainer.innerHTML = '';
+        question.options.forEach((option, index) => {
+            const button = document.createElement('button');
+            button.className = 'option';
+            button.textContent = option;
+            button.dataset.index = index;
+            button.addEventListener('click', selectOption);
+            optionsContainer.appendChild(button);
+        });
+    }
     
-    question.options.forEach((option, index) => {
-        const button = document.createElement('button');
-        button.className = 'option';
-        button.textContent = option;
-        button.dataset.index = index;
-        button.addEventListener('click', selectOption);
-        optionsContainer.appendChild(button);
-    });
+    const feedbackEl = document.getElementById('feedback');
+    if(feedbackEl) feedbackEl.textContent = '';
     
-    document.getElementById('feedback').textContent = '';
-    document.getElementById('question-modal').style.display = 'block';
-    document.getElementById('hint-button').disabled = questionManager.hints <= 0;
+    const modal = document.getElementById('question-modal');
+    if(modal) modal.style.display = 'block';
+    
+    const hintBtn = document.getElementById('hint-button');
+    if(hintBtn) hintBtn.disabled = questionManager.hints <= 0;
 }
 
-// ... (Keep selectOption from original) ...
 function selectOption(event) {
     document.querySelectorAll('.option').forEach(btn => btn.style.background = '#3498db');
     event.target.style.background = '#2ecc71';
@@ -321,38 +354,39 @@ function selectOption(event) {
 
 function submitAnswer() {
     const selectedButton = document.querySelector('.option[data-selected="true"]');
-    
     if (!selectedButton) return;
     
     const selectedIndex = parseInt(selectedButton.dataset.index);
     const isCorrect = questionManager.checkAnswer(selectedIndex);
     
+    const feedbackEl = document.getElementById('feedback');
     if (isCorrect) {
-        document.getElementById('feedback').textContent = 'Correct!';
-        document.getElementById('feedback').style.color = '#27ae60';
+        if(feedbackEl) {
+            feedbackEl.textContent = 'Correct!';
+            feedbackEl.style.color = '#27ae60';
+        }
         
         setTimeout(() => {
             document.getElementById('question-modal').style.display = 'none';
             updateHUD();
-            
-            // Remove the object effectively (visually hide it)
-            // In a full game, you might want to disable it
             
             if (!questionManager.hasMoreQuestions()) {
                 unlockDoor();
             }
         }, 1000);
     } else {
-        document.getElementById('feedback').textContent = 'Incorrect! Try again.';
-        document.getElementById('feedback').style.color = '#e74c3c';
+        if(feedbackEl) {
+            feedbackEl.textContent = 'Incorrect! Try again.';
+            feedbackEl.style.color = '#e74c3c';
+        }
     }
 }
 
-// ... (Keep showHint) ...
 function showHint() {
     if (questionManager.hints > 0) {
         const hint = questionManager.getHint();
-        document.getElementById('feedback').textContent = `Hint: ${hint}`;
+        const feedbackEl = document.getElementById('feedback');
+        if(feedbackEl) feedbackEl.textContent = `Hint: ${hint}`;
         updateHUD();
         document.getElementById('hint-button').disabled = questionManager.hints <= 0;
     }
@@ -362,11 +396,11 @@ function unlockDoor() {
     scene.children.forEach(child => {
         if (child.userData && child.userData.type === 'door') {
             child.userData.locked = false;
-            child.material.color.setHex(0x00FF00); // Green light
-            child.material.emissive.setHex(0x004400); // Glow
+            child.material.color.setHex(0x00FF00); 
+            child.material.emissive.setHex(0x004400);
         }
     });
-    alert(`Level ${currentLevel} Complete! The door opens...`);
+    alert(`Level ${currentLevel} Complete! The blast door opens...`);
 }
 
 function nextLevel() {
@@ -386,15 +420,19 @@ function endGame(escaped) {
     const finalScore = document.getElementById('final-score');
     
     if (escaped) {
-        endMessage.textContent = 'YOU ESCAPED THE FACILITY!';
-        endMessage.style.color = '#27ae60';
+        if(endMessage) {
+            endMessage.textContent = 'MISSION ACCOMPLISHED: YOU ESCAPED!';
+            endMessage.style.color = '#27ae60';
+        }
     } else {
-        endMessage.textContent = 'Containment Breach! Time Up.';
-        endMessage.style.color = '#e74c3c';
+        if(endMessage) {
+            endMessage.textContent = 'Containment Breach! Time Up.';
+            endMessage.style.color = '#e74c3c';
+        }
     }
     
-    finalScore.textContent = `Final Score: ${questionManager.score}`;
-    endScreen.classList.remove('hidden');
+    if(finalScore) finalScore.textContent = `Final Score: ${questionManager.score}`;
+    if(endScreen) endScreen.classList.remove('hidden');
 }
 
 function restartGame() {
@@ -422,10 +460,14 @@ function onWindowResize() {
 }
 
 function setupEventListeners() {
-    document.getElementById('start-button').addEventListener('click', startGame);
-    document.getElementById('restart-button').addEventListener('click', restartGame);
-    document.getElementById('submit-answer').addEventListener('click', submitAnswer);
-    document.getElementById('hint-button').addEventListener('click', showHint);
+    const ids = ['start-button', 'restart-button', 'submit-answer', 'hint-button'];
+    const funcs = [startGame, restartGame, submitAnswer, showHint];
+    
+    ids.forEach((id, i) => {
+        const el = document.getElementById(id);
+        if(el) el.addEventListener('click', funcs[i]);
+    });
+    
     renderer.domElement.addEventListener('click', onObjectClick, false);
 }
 
