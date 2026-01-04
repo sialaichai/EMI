@@ -450,22 +450,56 @@ function selectOption(event) {
 }
 
 function submitAnswer() {
-    const sel = document.querySelector('.option[data-selected="true"]');
-    if (!sel) return;
-    const isCorrect = questionManager.checkAnswer(parseInt(sel.dataset.index));
-    const fb = document.getElementById('feedback');
+    // 1. Find the selected button
+    const selectedButton = document.querySelector('.option[data-selected="true"]');
+    
+    // 2. If no button selected, do nothing
+    if (!selectedButton) return;
+    
+    // 3. Check the answer
+    const selectedIndex = parseInt(selectedButton.dataset.index);
+    const isCorrect = questionManager.checkAnswer(selectedIndex);
+    
+    const feedbackEl = document.getElementById('feedback');
+    
     if (isCorrect) {
-        fb.textContent = 'Correct!'; fb.style.color = '#27ae60';
+        // CASE A: CORRECT
+        if(feedbackEl) {
+            feedbackEl.textContent = 'Correct!';
+            feedbackEl.style.color = '#27ae60';
+        }
+        
+        // Play a success sound here if you had audio
+        
+        // Wait 1 second, then close modal and check for game progress
         setTimeout(() => {
             document.getElementById('question-modal').style.display = 'none';
             updateHUD();
-            if (!questionManager.hasMoreQuestions()) unlockDoor();
+            
+            // Mark the object as "Solved" so it can't be clicked again (Optional visual change)
+            // You could change the object color to green here if you wanted.
+            
+            // Check if all questions for this room are done
+            if (!questionManager.hasMoreQuestions()) {
+                unlockDoor();
+            }
         }, 1000);
+        
     } else {
-        fb.textContent = 'Incorrect! Try again.'; fb.style.color = '#e74c3c';
+        // CASE B: INCORRECT
+        if(feedbackEl) {
+            feedbackEl.textContent = 'Incorrect! Try again.';
+            feedbackEl.style.color = '#e74c3c';
+        }
+        
+        // IMPORTANT: We do NOT close the modal.
+        // We do NOT increment the question index (handled in questions.js).
+        // The player can simply select a different option and click Submit again.
+        
+        // Optional: Reset the selected button visual state after a moment?
+        // For now, leaving it selected lets them see what they picked.
     }
 }
-
 function showHint() {
     if (questionManager.hints > 0) {
         document.getElementById('feedback').textContent = `Hint: ${questionManager.getHint()}`;
