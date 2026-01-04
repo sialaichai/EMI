@@ -133,7 +133,6 @@ function createSideDoor(roomWidth, roomDepth) {
     const doorW = 4;
     const doorH = 6;
     
-    // Door setup
     const doorGeometry = new THREE.BoxGeometry(doorW, doorH, 0.2);
     const doorMaterial = new THREE.MeshStandardMaterial({ 
         color: 0x8B4513, 
@@ -141,7 +140,7 @@ function createSideDoor(roomWidth, roomDepth) {
     });
     const door = new THREE.Mesh(doorGeometry, doorMaterial);
     
-    // Position: Right Wall, Deep in the back (z = -5)
+    // Position: Right Wall, Deep in the back
     door.position.set(roomWidth/2 - 0.2, -2, -5); 
     door.rotation.y = Math.PI / 2;
     
@@ -149,7 +148,6 @@ function createSideDoor(roomWidth, roomDepth) {
     scene.add(door);
     objects.push(door);
     
-    // Frame
     const frameGeo = new THREE.BoxGeometry(doorW + 0.5, doorH + 0.5, 0.3);
     const frameMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
     const frame = new THREE.Mesh(frameGeo, frameMat);
@@ -160,56 +158,93 @@ function createSideDoor(roomWidth, roomDepth) {
 }
 
 function createInteractiveObjects(level) {
-    const wallOffset = 6.8; 
+    // We need exactly 5 questions.
+    // Let's guarantee 1 Floor Object and 4 Wall Objects distributed randomly.
     
-    const positions = [
-        // Left Wall Panels (Safe to keep as is)
-        { x: -wallOffset, y: 0, z: 4, type: 'wall', rotY: Math.PI/2 },
-        { x: -wallOffset, y: 0, z: -4, type: 'wall', rotY: Math.PI/2 },
-        
-        // Right Wall Panels (MOVED FORWARD to avoid Door at z=-5)
-        { x: wallOffset, y: 0, z: 5, type: 'wall', rotY: -Math.PI/2 }, // Closer to camera
-        { x: wallOffset, y: 0, z: 0, type: 'wall', rotY: -Math.PI/2 }, // Middle
-        
-        // Center Floor Device (The "Boss" object)
-        { x: 0, y: -3.5, z: -2, type: 'floor', rotY: 0 } // Moved slightly forward for visibility
-    ];
+    const wallOffset = 6.8; // Stick out slightly from wall
+    const backWallZ = -9.8; 
+    
+    // Define potential slots (Zones)
+    let possibleSlots = [];
 
-    positions.forEach((pos, index) => {
+    // 1. LEFT WALL Slots (x = -wallOffset)
+    // Z range from -8 to 8
+    for(let z = -6; z <= 6; z += 4) {
+        possibleSlots.push({ x: -wallOffset, y: 0, z: z, type: 'wall', wallSide: 'left', rotY: Math.PI/2 });
+    }
+
+    // 2. RIGHT WALL Slots (x = wallOffset)
+    // Z range: avoid -5 (Door area). Safe zones: z > -2 or z < -8
+    for(let z = 0; z <= 6; z += 4) {
+         possibleSlots.push({ x: wallOffset, y: 0, z: z, type: 'wall', wallSide: 'right', rotY: -Math.PI/2 });
+    }
+
+    // 3. BACK WALL Slots (z = backWallZ)
+    // X range: -5 to 5
+    for(let x = -4; x <= 4; x += 4) {
+        possibleSlots.push({ x: x, y: 0, z: backWallZ + 0.5, type: 'wall', wallSide: 'back', rotY: 0 });
+    }
+
+    // Shuffle slots to get random wall placements
+    possibleSlots.sort(() => Math.random() - 0.5);
+    
+    // Pick 4 Wall Locations
+    const selectedPositions = possibleSlots.slice(0, 4);
+    
+    // Add 1 Floor Location (Randomized slightly around center)
+    selectedPositions.push({ 
+        x: (Math.random() * 6) - 3, 
+        y: -3.5, 
+        z: (Math.random() * 6) - 3, 
+        type: 'floor', 
+        rotY: 0 
+    });
+
+    selectedPositions.forEach((pos, index) => {
         let mesh;
-        let isRotatable = false; // Default to static
+        let isRotatable = true; // All objects rotate now
+        
+        // Random rotation parameters
+        const rotationSpeed = (Math.random() * 0.04) + 0.01; // Speed between 0.01 and 0.05
+        const rotationDir = Math.random() < 0.5 ? 1 : -1;    // Clockwise or Counter-Clockwise
         
         if (pos.type === 'wall') {
-            // High-Tech Wall Panel
             const group = new THREE.Group();
             
-            // Panel Base
-            const panelGeo = new THREE.BoxGeometry(0.5, 2, 1.5);
-            const panelMat = new THREE.MeshStandardMaterial({ 
-                color: 0x333333,
-                roughness: 0.2
+            // Base attached to wall
+            const baseGeo = new THREE.BoxGeometry(0.2, 1, 1);
+            const baseMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+            const base = new THREE.Mesh(baseGeo, baseMat);
+            group.add(base);
+
+            // Rotating part (The functional unit)
+            // Create a "Tech Spinner" or "Radar" look
+            const spinGeo = new THREE.BoxGeometry(0.5, 1.8, 0.2); 
+            const spinMat = new THREE.MeshStandardMaterial({ 
+                color: Math.random() * 0xffffff, // Random color per object
+                emissive: 0x222222,
+                roughness: 0.3
             });
-            const panel = new THREE.Mesh(panelGeo, panelMat);
-            group.add(panel);
+            const spinner = new THREE.Mesh(spinGeo, spinMat);
             
-            // Glowing Screen
-            const screenGeo = new THREE.PlaneGeometry(1.2, 1.6);
-            const screenMat = new THREE.MeshStandardMaterial({ 
-                color: 0x00FFFF, 
-                emissive: 0x00AAAA,
-                emissiveIntensity: 0.5
-            });
-            const screen = new THREE.Mesh(screenGeo, screenMat);
-            screen.position.x = 0.26; 
-            screen.rotation.y = Math.PI/2;
-            group.add(screen);
+            // Offset spinner so it rotates in front of the base
+            spinner.position.x = 0.4; 
+            
+            // Add detail to spinner
+            const lightGeo = new THREE.SphereGeometry(0.2);
+            const lightMat = new THREE.MeshStandardMaterial({ color: 0x00FF00, emissive: 0x00FF00 });
+            const light = new THREE.Mesh(lightGeo, lightMat);
+            light.position.y = 0.5;
+            spinner.add(light);
+
+            group.add(spinner);
             
             mesh = group;
+            // Mark the spinner part as the thing that rotates locally
+            mesh.userData.rotatePart = spinner; 
             
         } else {
-            // Center Floor Object - This one SHOULD spin
-            isRotatable = true;
-            
+            // Floor Object
             if (level % 2 !== 0) { 
                  const geo = new THREE.IcosahedronGeometry(1.5, 0);
                  const mat = new THREE.MeshStandardMaterial({ 
@@ -233,18 +268,20 @@ function createInteractiveObjects(level) {
             const ped = new THREE.Mesh(pedGeo, pedMat);
             ped.position.set(pos.x, pos.y - 1.5, pos.z);
             scene.add(ped);
+            
+            // Floor objects rotate the whole mesh
+            mesh.userData.rotatePart = mesh; 
         }
 
         mesh.position.set(pos.x, pos.y, pos.z);
         mesh.rotation.y = pos.rotY;
         
-        // Add specific flag to control animation
-        mesh.userData = { 
-            type: 'interactive', 
-            questionIndex: index,
-            rotatable: isRotatable 
-        };
-        
+        mesh.userData.type = 'interactive';
+        mesh.userData.questionIndex = index;
+        mesh.userData.rotSpeed = rotationSpeed * rotationDir;
+        mesh.userData.posType = pos.type;
+
+        // Ensure children trigger the click
         mesh.traverse((child) => {
             child.userData = { type: 'interactive', parent: mesh };
         });
@@ -308,17 +345,15 @@ function onObjectClick(event) {
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, camera);
     
-    const intersects = raycaster.intersectObjects(objects, true); // true = recursive check for groups
+    const intersects = raycaster.intersectObjects(objects, true); 
     
     if (intersects.length > 0) {
         let target = intersects[0].object;
         
-        // Traverse up to find the main interactive parent
         while(target.parent && target.userData.type !== 'interactive' && target.userData.type !== 'door') {
             target = target.parent;
         }
         
-        // Check parent's user data if child doesn't have it
         if (!target.userData.type && target.parent && target.parent.userData.type) {
             target = target.parent;
         }
@@ -336,9 +371,6 @@ function onObjectClick(event) {
 }
 
 function showQuestion(object) {
-    // If the specific object is already solved, maybe show a message?
-    // For now, we assume standard loop.
-    
     if (!questionManager.hasMoreQuestions()) {
         unlockDoor();
         return;
@@ -467,11 +499,20 @@ function restartGame() {
 function animate() {
     requestAnimationFrame(animate);
     
-    // Only rotate objects that are marked as rotatable
     objects.forEach(obj => {
-        if (obj.userData.type === 'interactive' && obj.userData.rotatable) {
-            obj.rotation.y += 0.01;
-            obj.rotation.z += 0.005;
+        // Animate all interactive objects
+        if (obj.userData.type === 'interactive' && obj.userData.rotatePart) {
+            const speed = obj.userData.rotSpeed || 0.02;
+            
+            if (obj.userData.posType === 'floor') {
+                // Floor objects spin on Y and Z
+                obj.userData.rotatePart.rotation.y += speed;
+                obj.userData.rotatePart.rotation.z += speed * 0.5;
+            } else {
+                // Wall objects spin on their local X (facing out from mount)
+                // We access the 'spinner' child stored in rotatePart
+                obj.userData.rotatePart.rotation.x += speed * 3; 
+            }
         }
     });
     
