@@ -667,24 +667,27 @@ class QuestionManager {
     }
     
     checkAnswer(answerIndex) {
-        if (!this.questions[this.currentQuestionIndex]) return false;
-        
-        const correct = this.questions[this.currentQuestionIndex].correct === answerIndex;
-        if (correct) {
-            this.score += 100 * this.currentLevel;
-            this.currentQuestionIndex++;
-        }
-        // No else block needed here for indexing
-        return correct;
+    const correct = this.questions[this.currentQuestionIndex].correct === answerIndex;
+    
+    if (correct) {
+        this.score += 100 * this.currentLevel;
+        this.currentQuestionIndex++;
+    } else {
+        // NEW: Subtract 20 points for a wrong guess (prevent going below 0)
+        this.score = Math.max(0, this.score - 20); 
     }
+    return correct;
+}
     
     getHint() {
-        if (this.hints > 0) {
-            this.hints--;
-            return this.questions[this.currentQuestionIndex].hint;
-        }
-        return "No hints remaining!";
+    if (this.hints > 0) {
+        this.hints--;
+        // NEW: Subtract 50 points for using a hint
+        this.score = Math.max(0, this.score - 50); 
+        return this.questions[this.currentQuestionIndex].hint;
     }
+    return "No hints remaining!";
+}
     
     hasMoreQuestions() {
         return this.currentQuestionIndex < this.questions.length;
