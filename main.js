@@ -125,9 +125,9 @@ function createRoom(theme) {
     scene.add(ceiling);
 
     // Walls
-    createWall(roomWidth, roomHeight, 0.5, theme.wall, 0, 0, -roomDepth/2); // Back
-    createWall(roomDepth, roomHeight, 0.5, theme.wall, -roomWidth/2, 0, 0, Math.PI/2); // Left
-    createWall(roomDepth, roomHeight, 0.5, theme.wall, roomWidth/2, 0, 0, Math.PI/2); // Right
+    createWall(roomWidth, roomHeight, 0.5, theme.wall, 0, 0, -roomDepth/2); 
+    createWall(roomDepth, roomHeight, 0.5, theme.wall, -roomWidth/2, 0, 0, Math.PI/2); 
+    createWall(roomDepth, roomHeight, 0.5, theme.wall, roomWidth/2, 0, 0, Math.PI/2); 
 
     createSideDoor(roomWidth, roomDepth);
 }
@@ -135,7 +135,7 @@ function createRoom(theme) {
 function createSideDoor(roomWidth, roomDepth) {
     const doorW = 4;
     const doorH = 6;
-    const doorZ = -5; // Towards back right
+    const doorZ = -5;
     
     const doorGeometry = new THREE.BoxGeometry(doorW, doorH, 0.2);
     const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.4 });
@@ -160,50 +160,43 @@ function createSideDoor(roomWidth, roomDepth) {
 function createInteractiveObjects(level) {
     const objectConfigs = [];
     
-    // 1. Back Wall Object (Static)
-    // Wall is at z = -10. Object goes slightly in front.
-    // Random X between -5 and 5
+    // 1. Back Wall Object (Pulsating)
     objectConfigs.push({
         type: 'wall',
         wallSide: 'back',
         x: (Math.random() * 10) - 5,
         y: 0,
         z: -9.5,
-        rotY: 0
+        rotY: 0,
+        animType: 'pulse'
     });
 
-    // 2. Left Wall Object (Static)
-    // Wall is at x = -7. Object goes slightly in front.
-    // Random Z between -8 and 8
+    // 2. Left Wall Object (Flashing)
     objectConfigs.push({
         type: 'wall',
         wallSide: 'left',
         x: -6.5,
         y: 0,
         z: (Math.random() * 16) - 8,
-        rotY: Math.PI / 2
+        rotY: Math.PI / 2,
+        animType: 'flash'
     });
 
     // 3. Three Ground Objects (Rotating)
-    // Generate 3 random positions that don't overlap too much
     const groundPoints = [];
     let attempts = 0;
     while(groundPoints.length < 3 && attempts < 100) {
         attempts++;
         const candidate = {
-            // Avoid extreme edges
             x: (Math.random() * 10) - 5, 
             z: (Math.random() * 14) - 7 
         };
-        
-        // Simple distance check against existing points
         let tooClose = false;
         for(let p of groundPoints) {
             const dx = p.x - candidate.x;
             const dz = p.z - candidate.z;
             if (Math.sqrt(dx*dx + dz*dz) < 3.0) tooClose = true;
         }
-        
         if(!tooClose) groundPoints.push(candidate);
     }
 
@@ -211,41 +204,69 @@ function createInteractiveObjects(level) {
         objectConfigs.push({
             type: 'floor',
             x: p.x,
-            y: -3.5, // Floor level
+            y: -3.5,
             z: p.z,
-            rotY: Math.random() * Math.PI // Random initial rotation
+            rotY: Math.random() * Math.PI,
+            animType: 'rotate'
         });
     });
 
-    // Create the meshes based on config
+    // Build Meshes
     objectConfigs.forEach((config, index) => {
         let mesh;
         
         if (config.type === 'wall') {
-            // Wall Panel (Static)
             const group = new THREE.Group();
             
-            // Base
-            const baseGeo = new THREE.BoxGeometry(0.2, 1.5, 1.5);
-            const baseMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-            const base = new THREE.Mesh(baseGeo, baseMat);
+            // Mounting Base
+            const base = new THREE.Mesh(
+                new THREE.BoxGeometry(0.3, 1.5, 1.5), 
+                new THREE.MeshStandardMaterial({ color: 0x111111 })
+            );
             group.add(base);
 
-            // Screen/Interface
-            const screenGeo = new THREE.BoxGeometry(0.1, 1.2, 1.2); 
-            const screenMat = new THREE.MeshStandardMaterial({ 
-                color: Math.random() * 0xffffff,
-                emissive: 0x111111,
-                roughness: 0.3
-            });
-            const screen = new THREE.Mesh(screenGeo, screenMat);
-            screen.position.x = 0.15; // Pop out
-            group.add(screen);
+            // Create Interesting Sci-Fi Geometry
+            let artMesh;
+            if (config.animType === 'pulse') {
+                // "Quantum Resonator" - Wireframe Icosahedron
+                const geo = new THREE.IcosahedronGeometry(0.8, 0);
+                const mat = new THREE.MeshStandardMaterial({ 
+                    color: 0x00FFFF, 
+                    emissive: 0x0088AA,
+                    emissiveIntensity: 0.8,
+                    wireframe: true
+                });
+                artMesh = new THREE.Mesh(geo, mat);
+                
+                // Add an inner core
+                const core = new THREE.Mesh(
+                    new THREE.OctahedronGeometry(0.4),
+                    new THREE.MeshStandardMaterial({ color: 0xFFFFFF, emissive: 0xFFFFFF })
+                );
+                artMesh.add(core);
+                
+            } else {
+                // "Flux Node" - Torus Knot with flashing light
+                const geo = new THREE.TorusKnotGeometry(0.5, 0.15, 64, 8);
+                const mat = new THREE.MeshStandardMaterial({ 
+                    color: 0xFF00FF, 
+                    emissive: 0x550055,
+                    emissiveIntensity: 0.5,
+                    roughness: 0.2,
+                    metalness: 0.8
+                });
+                artMesh = new THREE.Mesh(geo, mat);
+            }
             
+            artMesh.position.x = 0.6; // Stick out from base
+            group.add(artMesh);
             mesh = group;
             
+            // Store reference to the part we want to animate
+            mesh.userData.animPart = artMesh;
+            
         } else {
-            // Floor Object (Rotating)
+            // Floor Object
             if (level % 2 !== 0) { 
                  const geo = new THREE.IcosahedronGeometry(1.2, 0);
                  const mat = new THREE.MeshStandardMaterial({ 
@@ -265,27 +286,27 @@ function createInteractiveObjects(level) {
             }
             
             // Pedestal
-            const pedGeo = new THREE.CylinderGeometry(1.5, 2, 1, 32);
-            const pedMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
-            const ped = new THREE.Mesh(pedGeo, pedMat);
+            const ped = new THREE.Mesh(
+                new THREE.CylinderGeometry(1.5, 2, 1, 32),
+                new THREE.MeshStandardMaterial({ color: 0x111111 })
+            );
             ped.position.set(config.x, config.y - 1.2, config.z);
             scene.add(ped);
+            
+            mesh = mesh; // Reassign for clarity
+            mesh.userData.animPart = mesh; // Animate the whole object
         }
 
         mesh.position.set(config.x, config.y, config.z);
         mesh.rotation.y = config.rotY;
         
-        // Set UserData
+        // Metadata
         mesh.userData.type = 'interactive';
         mesh.userData.questionIndex = index;
+        mesh.userData.animType = config.animType;
         mesh.userData.posType = config.type; // 'wall' or 'floor'
-        
-        // Random rotation parameters for floor objects
-        if (config.type === 'floor') {
-            mesh.userData.rotSpeed = (Math.random() * 0.03) + 0.01;
-        }
 
-        // Apply userData to all children for raycasting
+        // Apply userData to children for raycasting
         mesh.traverse((child) => {
             if (child !== mesh) { 
                 child.userData = { type: 'interactive', parent: mesh };
@@ -300,12 +321,40 @@ function createInteractiveObjects(level) {
 function animate() {
     requestAnimationFrame(animate);
     
+    const time = Date.now() * 0.001; // Current time in seconds
+
     objects.forEach(obj => {
-        // ONLY rotate if it's a floor object
-        if (obj.userData.type === 'interactive' && obj.userData.posType === 'floor') {
-            const speed = obj.userData.rotSpeed || 0.02;
-            obj.rotation.y += speed;
-            obj.rotation.z += speed * 0.5;
+        if (obj.userData.type === 'interactive' && obj.userData.animPart) {
+            const part = obj.userData.animPart;
+            const type = obj.userData.animType;
+
+            if (type === 'rotate') {
+                // Ground objects spinning
+                part.rotation.y += 0.02;
+                part.rotation.z += 0.01;
+            } 
+            else if (type === 'pulse') {
+                // Back Wall: Breathing/Pulsing effect
+                const scale = 1 + Math.sin(time * 2) * 0.1; // Scale 0.9 to 1.1
+                part.scale.set(scale, scale, scale);
+                
+                // Pulse Emissive Intensity
+                part.material.emissiveIntensity = 0.5 + Math.sin(time * 3) * 0.4;
+                
+                // Slow rotation just for look (internal to object)
+                part.rotation.z = Math.sin(time) * 0.2;
+                part.rotation.y += 0.01;
+            } 
+            else if (type === 'flash') {
+                // Left Wall: Strobe/Flash effect
+                // Rapid flicker
+                const flash = Math.sin(time * 15) > 0.5 ? 2.0 : 0.2;
+                part.material.emissiveIntensity = flash;
+                
+                // Tech spin (internal)
+                part.rotation.x += 0.02;
+                part.rotation.z += 0.01;
+            }
         }
     });
     
@@ -316,18 +365,15 @@ function animate() {
 // -- Helpers --
 function startGame() {
     if(questionManager) questionManager.reset();
-    
     ['start-screen', 'end-screen'].forEach(id => {
         const el = document.getElementById(id);
         if(el) el.classList.add('hidden');
     });
     document.getElementById('question-modal').style.display = 'none';
-    
     gameActive = true;
     timeRemaining = 3600;
     updateTimerDisplay();
     loadLevel(1);
-    
     clearInterval(gameTimer);
     gameTimer = setInterval(() => {
         if (gameActive && timeRemaining > 0) {
