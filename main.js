@@ -158,40 +158,32 @@ function createSideDoor(roomWidth, roomDepth) {
 }
 
 function createInteractiveObjects(level) {
-    // We need exactly 5 questions.
-    // Let's guarantee 1 Floor Object and 4 Wall Objects distributed randomly.
-    
-    const wallOffset = 6.8; // Stick out slightly from wall
+    const wallOffset = 6.8; 
     const backWallZ = -9.8; 
     
-    // Define potential slots (Zones)
+    // Define all possible slots (Asymmetry logic)
     let possibleSlots = [];
 
-    // 1. LEFT WALL Slots (x = -wallOffset)
-    // Z range from -8 to 8
+    // 1. LEFT WALL Slots
     for(let z = -6; z <= 6; z += 4) {
-        possibleSlots.push({ x: -wallOffset, y: 0, z: z, type: 'wall', wallSide: 'left', rotY: Math.PI/2 });
+        possibleSlots.push({ x: -wallOffset, y: 0, z: z, type: 'wall', rotY: Math.PI/2 });
     }
 
-    // 2. RIGHT WALL Slots (x = wallOffset)
-    // Z range: avoid -5 (Door area). Safe zones: z > -2 or z < -8
+    // 2. RIGHT WALL Slots (Avoid door at z=-5)
     for(let z = 0; z <= 6; z += 4) {
-         possibleSlots.push({ x: wallOffset, y: 0, z: z, type: 'wall', wallSide: 'right', rotY: -Math.PI/2 });
+         possibleSlots.push({ x: wallOffset, y: 0, z: z, type: 'wall', rotY: -Math.PI/2 });
     }
 
-    // 3. BACK WALL Slots (z = backWallZ)
-    // X range: -5 to 5
+    // 3. BACK WALL Slots
     for(let x = -4; x <= 4; x += 4) {
-        possibleSlots.push({ x: x, y: 0, z: backWallZ + 0.5, type: 'wall', wallSide: 'back', rotY: 0 });
+        possibleSlots.push({ x: x, y: 0, z: backWallZ + 0.5, type: 'wall', rotY: 0 });
     }
 
-    // Shuffle slots to get random wall placements
+    // Shuffle and pick 4 Wall Locations
     possibleSlots.sort(() => Math.random() - 0.5);
-    
-    // Pick 4 Wall Locations
     const selectedPositions = possibleSlots.slice(0, 4);
     
-    // Add 1 Floor Location (Randomized slightly around center)
+    // Add 1 Floor Location (Randomized Center)
     selectedPositions.push({ 
         x: (Math.random() * 6) - 3, 
         y: -3.5, 
@@ -202,45 +194,35 @@ function createInteractiveObjects(level) {
 
     selectedPositions.forEach((pos, index) => {
         let mesh;
-        let isRotatable = true; // All objects rotate now
         
-        // Random rotation parameters
-        const rotationSpeed = (Math.random() * 0.04) + 0.01; // Speed between 0.01 and 0.05
-        const rotationDir = Math.random() < 0.5 ? 1 : -1;    // Clockwise or Counter-Clockwise
+        // Randomize rotation speed and direction
+        const rotationSpeed = (Math.random() * 0.04) + 0.01; 
+        const rotationDir = Math.random() < 0.5 ? 1 : -1;    
         
         if (pos.type === 'wall') {
             const group = new THREE.Group();
             
-            // Base attached to wall
+            // Base (Fixed to wall)
             const baseGeo = new THREE.BoxGeometry(0.2, 1, 1);
             const baseMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
             const base = new THREE.Mesh(baseGeo, baseMat);
             group.add(base);
 
-            // Rotating part (The functional unit)
-            // Create a "Tech Spinner" or "Radar" look
+            // Spinner (The part that rotates)
             const spinGeo = new THREE.BoxGeometry(0.5, 1.8, 0.2); 
             const spinMat = new THREE.MeshStandardMaterial({ 
-                color: Math.random() * 0xffffff, // Random color per object
+                color: Math.random() * 0xffffff,
                 emissive: 0x222222,
                 roughness: 0.3
             });
             const spinner = new THREE.Mesh(spinGeo, spinMat);
             
-            // Offset spinner so it rotates in front of the base
+            // Offset spinner so it floats in front of the base
             spinner.position.x = 0.4; 
-            
-            // Add detail to spinner
-            const lightGeo = new THREE.SphereGeometry(0.2);
-            const lightMat = new THREE.MeshStandardMaterial({ color: 0x00FF00, emissive: 0x00FF00 });
-            const light = new THREE.Mesh(lightGeo, lightMat);
-            light.position.y = 0.5;
-            spinner.add(light);
-
             group.add(spinner);
             
             mesh = group;
-            // Mark the spinner part as the thing that rotates locally
+            // Store reference to the spinning part
             mesh.userData.rotatePart = spinner; 
             
         } else {
@@ -269,19 +251,19 @@ function createInteractiveObjects(level) {
             ped.position.set(pos.x, pos.y - 1.5, pos.z);
             scene.add(ped);
             
-            // Floor objects rotate the whole mesh
-            mesh.userData.rotatePart = mesh; 
+            mesh.userData.rotatePart = mesh; // Whole object rotates
         }
 
         mesh.position.set(pos.x, pos.y, pos.z);
         mesh.rotation.y = pos.rotY;
         
+        // Setup UserData
         mesh.userData.type = 'interactive';
         mesh.userData.questionIndex = index;
         mesh.userData.rotSpeed = rotationSpeed * rotationDir;
         mesh.userData.posType = pos.type;
 
-        // Ensure children trigger the click
+        // Ensure raycasting hits children
         mesh.traverse((child) => {
             child.userData = { type: 'interactive', parent: mesh };
         });
@@ -291,21 +273,43 @@ function createInteractiveObjects(level) {
     });
 }
 
+function animate() {
+    requestAnimationFrame(animate);
+    
+    objects.forEach(obj => {
+        // Only animate if we have a designated rotating part
+        if (obj.userData.type === 'interactive' && obj.userData.rotatePart) {
+            const speed = obj.userData.rotSpeed || 0.02;
+            
+            if (obj.userData.posType === 'floor') {
+                // Floor objects spin on Y (Vertical axis) and Z (Tumble)
+                obj.userData.rotatePart.rotation.y += speed;
+                obj.userData.rotatePart.rotation.z += speed * 0.5;
+            } else {
+                // Wall objects spin on local X axis (Facing out like a fan)
+                obj.userData.rotatePart.rotation.x += speed * 3; 
+            }
+        }
+    });
+    
+    controls.update();
+    renderer.render(scene, camera);
+}
+
+// ... (Rest of functions: startGame, updateTimerDisplay, etc. remain unchanged)
+// To ensure they are present, here are the simplified versions:
+
 function startGame() {
     questionManager.reset();
-    
     ['start-screen', 'end-screen'].forEach(id => {
         const el = document.getElementById(id);
         if(el) el.classList.add('hidden');
     });
-    
-    const qModal = document.getElementById('question-modal');
-    if(qModal) qModal.style.display = 'none';
+    document.getElementById('question-modal').style.display = 'none';
     
     gameActive = true;
     timeRemaining = 3600;
     updateTimerDisplay();
-    
     loadLevel(1);
     
     clearInterval(gameTimer);
@@ -316,91 +320,65 @@ function startGame() {
             if (timeRemaining <= 0) endGame(false);
         }
     }, 1000);
-    
     updateHUD();
 }
 
 function updateTimerDisplay() {
     const timerEl = document.getElementById('timer');
-    if(!timerEl) return;
-    const minutes = Math.floor(timeRemaining / 60);
-    const seconds = timeRemaining % 60;
-    timerEl.textContent = `Time: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    if(timerEl) {
+        const m = Math.floor(timeRemaining / 60);
+        const s = timeRemaining % 60;
+        timerEl.textContent = `Time: ${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
 }
 
 function updateHUD() {
-    const scoreEl = document.getElementById('score');
-    const hintsEl = document.getElementById('hints');
-    if(scoreEl) scoreEl.textContent = `Score: ${questionManager.score}`;
-    if(hintsEl) hintsEl.textContent = `Hints: ${questionManager.hints}`;
+    document.getElementById('score').textContent = `Score: ${questionManager.score}`;
+    document.getElementById('hints').textContent = `Hints: ${questionManager.hints}`;
 }
 
 function onObjectClick(event) {
     if (!gameActive) return;
-    
     const mouse = new THREE.Vector2();
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, camera);
-    
-    const intersects = raycaster.intersectObjects(objects, true); 
+    const intersects = raycaster.intersectObjects(objects, true);
     
     if (intersects.length > 0) {
         let target = intersects[0].object;
-        
         while(target.parent && target.userData.type !== 'interactive' && target.userData.type !== 'door') {
             target = target.parent;
         }
-        
-        if (!target.userData.type && target.parent && target.parent.userData.type) {
-            target = target.parent;
-        }
+        if (!target.userData.type && target.parent && target.parent.userData.type) target = target.parent;
 
         if (target.userData.type === 'interactive') {
             showQuestion(target);
         } else if (target.userData.type === 'door') {
-            if (target.userData.locked) {
-                alert('Door Locked! Solve all questions in this sector.');
-            } else {
-                nextLevel();
-            }
+            if (target.userData.locked) alert('Door Locked! Solve all questions in this sector.');
+            else nextLevel();
         }
     }
 }
 
 function showQuestion(object) {
-    if (!questionManager.hasMoreQuestions()) {
-        unlockDoor();
-        return;
-    }
-    
+    if (!questionManager.hasMoreQuestions()) { unlockDoor(); return; }
     const question = questionManager.getCurrentQuestion();
-    const txtEl = document.getElementById('question-text');
-    if(txtEl) txtEl.textContent = question.question;
-    
-    const optionsContainer = document.getElementById('options-container');
-    if(optionsContainer) {
-        optionsContainer.innerHTML = '';
-        question.options.forEach((option, index) => {
-            const button = document.createElement('button');
-            button.className = 'option';
-            button.textContent = option;
-            button.dataset.index = index;
-            button.addEventListener('click', selectOption);
-            optionsContainer.appendChild(button);
-        });
-    }
-    
-    const feedbackEl = document.getElementById('feedback');
-    if(feedbackEl) feedbackEl.textContent = '';
-    
-    const modal = document.getElementById('question-modal');
-    if(modal) modal.style.display = 'block';
-    
-    const hintBtn = document.getElementById('hint-button');
-    if(hintBtn) hintBtn.disabled = questionManager.hints <= 0;
+    document.getElementById('question-text').textContent = question.question;
+    const container = document.getElementById('options-container');
+    container.innerHTML = '';
+    question.options.forEach((opt, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'option';
+        btn.textContent = opt;
+        btn.dataset.index = i;
+        btn.addEventListener('click', selectOption);
+        container.appendChild(btn);
+    });
+    document.getElementById('feedback').textContent = '';
+    document.getElementById('question-modal').style.display = 'block';
+    document.getElementById('hint-button').disabled = questionManager.hints <= 0;
 }
 
 function selectOption(event) {
@@ -410,115 +388,55 @@ function selectOption(event) {
 }
 
 function submitAnswer() {
-    const selectedButton = document.querySelector('.option[data-selected="true"]');
-    if (!selectedButton) return;
-    
-    const selectedIndex = parseInt(selectedButton.dataset.index);
-    const isCorrect = questionManager.checkAnswer(selectedIndex);
-    
-    const feedbackEl = document.getElementById('feedback');
+    const sel = document.querySelector('.option[data-selected="true"]');
+    if (!sel) return;
+    const isCorrect = questionManager.checkAnswer(parseInt(sel.dataset.index));
+    const fb = document.getElementById('feedback');
     if (isCorrect) {
-        if(feedbackEl) {
-            feedbackEl.textContent = 'Correct!';
-            feedbackEl.style.color = '#27ae60';
-        }
-        
+        fb.textContent = 'Correct!'; fb.style.color = '#27ae60';
         setTimeout(() => {
             document.getElementById('question-modal').style.display = 'none';
             updateHUD();
-            
-            if (!questionManager.hasMoreQuestions()) {
-                unlockDoor();
-            }
+            if (!questionManager.hasMoreQuestions()) unlockDoor();
         }, 1000);
     } else {
-        if(feedbackEl) {
-            feedbackEl.textContent = 'Incorrect! Try again.';
-            feedbackEl.style.color = '#e74c3c';
-        }
+        fb.textContent = 'Incorrect! Try again.'; fb.style.color = '#e74c3c';
     }
 }
 
 function showHint() {
     if (questionManager.hints > 0) {
-        const hint = questionManager.getHint();
-        const feedbackEl = document.getElementById('feedback');
-        if(feedbackEl) feedbackEl.textContent = `Hint: ${hint}`;
+        document.getElementById('feedback').textContent = `Hint: ${questionManager.getHint()}`;
         updateHUD();
         document.getElementById('hint-button').disabled = questionManager.hints <= 0;
     }
 }
 
 function unlockDoor() {
-    scene.children.forEach(child => {
-        if (child.userData && child.userData.type === 'door') {
-            child.userData.locked = false;
-            child.material.color.setHex(0x00FF00); 
-            child.material.emissive.setHex(0x004400);
+    scene.children.forEach(c => {
+        if (c.userData && c.userData.type === 'door') {
+            c.userData.locked = false;
+            c.material.color.setHex(0x00FF00); c.material.emissive.setHex(0x004400);
         }
     });
     alert(`Level ${currentLevel} Complete! The blast door opens...`);
 }
 
 function nextLevel() {
-    if (currentLevel < MAX_LEVELS) {
-        loadLevel(currentLevel + 1);
-    } else {
-        endGame(true);
-    }
+    if (currentLevel < MAX_LEVELS) loadLevel(currentLevel + 1);
+    else endGame(true);
 }
 
 function endGame(escaped) {
     gameActive = false;
     clearInterval(gameTimer);
-    
-    const endScreen = document.getElementById('end-screen');
-    const endMessage = document.getElementById('end-message');
-    const finalScore = document.getElementById('final-score');
-    
-    if (escaped) {
-        if(endMessage) {
-            endMessage.textContent = 'MISSION ACCOMPLISHED: YOU ESCAPED!';
-            endMessage.style.color = '#27ae60';
-        }
-    } else {
-        if(endMessage) {
-            endMessage.textContent = 'Containment Breach! Time Up.';
-            endMessage.style.color = '#e74c3c';
-        }
-    }
-    
-    if(finalScore) finalScore.textContent = `Final Score: ${questionManager.score}`;
-    if(endScreen) endScreen.classList.remove('hidden');
+    document.getElementById('end-message').textContent = escaped ? 'MISSION ACCOMPLISHED!' : 'Containment Breach! Time Up.';
+    document.getElementById('end-message').style.color = escaped ? '#27ae60' : '#e74c3c';
+    document.getElementById('final-score').textContent = `Final Score: ${questionManager.score}`;
+    document.getElementById('end-screen').classList.remove('hidden');
 }
 
-function restartGame() {
-    startGame();
-}
-
-function animate() {
-    requestAnimationFrame(animate);
-    
-    objects.forEach(obj => {
-        // Animate all interactive objects
-        if (obj.userData.type === 'interactive' && obj.userData.rotatePart) {
-            const speed = obj.userData.rotSpeed || 0.02;
-            
-            if (obj.userData.posType === 'floor') {
-                // Floor objects spin on Y and Z
-                obj.userData.rotatePart.rotation.y += speed;
-                obj.userData.rotatePart.rotation.z += speed * 0.5;
-            } else {
-                // Wall objects spin on their local X (facing out from mount)
-                // We access the 'spinner' child stored in rotatePart
-                obj.userData.rotatePart.rotation.x += speed * 3; 
-            }
-        }
-    });
-    
-    controls.update();
-    renderer.render(scene, camera);
-}
+function restartGame() { startGame(); }
 
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -529,12 +447,7 @@ function onWindowResize() {
 function setupEventListeners() {
     const ids = ['start-button', 'restart-button', 'submit-answer', 'hint-button'];
     const funcs = [startGame, restartGame, submitAnswer, showHint];
-    
-    ids.forEach((id, i) => {
-        const el = document.getElementById(id);
-        if(el) el.addEventListener('click', funcs[i]);
-    });
-    
+    ids.forEach((id, i) => { const el = document.getElementById(id); if(el) el.addEventListener('click', funcs[i]); });
     renderer.domElement.addEventListener('click', onObjectClick, false);
 }
 
