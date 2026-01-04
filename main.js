@@ -38,7 +38,6 @@ function init() {
     controls.maxPolarAngle = Math.PI / 2 - 0.1;
     controls.target.set(0, 0, 0); 
     
-    // Check if QuestionManager exists
     if (typeof QuestionManager !== 'undefined') {
         questionManager = new QuestionManager();
     } else {
@@ -126,9 +125,9 @@ function createRoom(theme) {
     scene.add(ceiling);
 
     // Walls
-    createWall(roomWidth, roomHeight, 0.5, theme.wall, 0, 0, -roomDepth/2); 
-    createWall(roomDepth, roomHeight, 0.5, theme.wall, -roomWidth/2, 0, 0, Math.PI/2); 
-    createWall(roomDepth, roomHeight, 0.5, theme.wall, roomWidth/2, 0, 0, Math.PI/2); 
+    createWall(roomWidth, roomHeight, 0.5, theme.wall, 0, 0, -roomDepth/2); // Back
+    createWall(roomDepth, roomHeight, 0.5, theme.wall, -roomWidth/2, 0, 0, Math.PI/2); // Left
+    createWall(roomDepth, roomHeight, 0.5, theme.wall, roomWidth/2, 0, 0, Math.PI/2); // Right
 
     createSideDoor(roomWidth, roomDepth);
 }
@@ -136,7 +135,7 @@ function createRoom(theme) {
 function createSideDoor(roomWidth, roomDepth) {
     const doorW = 4;
     const doorH = 6;
-    const doorZ = -5;
+    const doorZ = -5; // Towards back right
     
     const doorGeometry = new THREE.BoxGeometry(doorW, doorH, 0.2);
     const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.4 });
@@ -159,73 +158,96 @@ function createSideDoor(roomWidth, roomDepth) {
 }
 
 function createInteractiveObjects(level) {
-    const wallOffset = 6.8; 
-    const backWallZ = -9.8; 
+    const objectConfigs = [];
     
-    let possibleSlots = [];
-
-    // Left Wall Slots
-    for(let z = -6; z <= 6; z += 4) {
-        possibleSlots.push({ x: -wallOffset, y: 0, z: z, type: 'wall', rotY: Math.PI/2 });
-    }
-    // Right Wall Slots (Avoid door at z=-5)
-    for(let z = 0; z <= 6; z += 4) {
-         possibleSlots.push({ x: wallOffset, y: 0, z: z, type: 'wall', rotY: -Math.PI/2 });
-    }
-    // Back Wall Slots
-    for(let x = -4; x <= 4; x += 4) {
-        possibleSlots.push({ x: x, y: 0, z: backWallZ + 0.5, type: 'wall', rotY: 0 });
-    }
-
-    possibleSlots.sort(() => Math.random() - 0.5);
-    const selectedPositions = possibleSlots.slice(0, 4);
-    
-    // Add 1 Floor Object
-    selectedPositions.push({ 
-        x: (Math.random() * 6) - 3, 
-        y: -3.5, 
-        z: (Math.random() * 6) - 3, 
-        type: 'floor', 
-        rotY: 0 
+    // 1. Back Wall Object (Static)
+    // Wall is at z = -10. Object goes slightly in front.
+    // Random X between -5 and 5
+    objectConfigs.push({
+        type: 'wall',
+        wallSide: 'back',
+        x: (Math.random() * 10) - 5,
+        y: 0,
+        z: -9.5,
+        rotY: 0
     });
 
-    selectedPositions.forEach((pos, index) => {
-        let mesh;
-        const rotationSpeed = (Math.random() * 0.05) + 0.02; 
-        const rotationDir = Math.random() < 0.5 ? 1 : -1;    
+    // 2. Left Wall Object (Static)
+    // Wall is at x = -7. Object goes slightly in front.
+    // Random Z between -8 and 8
+    objectConfigs.push({
+        type: 'wall',
+        wallSide: 'left',
+        x: -6.5,
+        y: 0,
+        z: (Math.random() * 16) - 8,
+        rotY: Math.PI / 2
+    });
+
+    // 3. Three Ground Objects (Rotating)
+    // Generate 3 random positions that don't overlap too much
+    const groundPoints = [];
+    let attempts = 0;
+    while(groundPoints.length < 3 && attempts < 100) {
+        attempts++;
+        const candidate = {
+            // Avoid extreme edges
+            x: (Math.random() * 10) - 5, 
+            z: (Math.random() * 14) - 7 
+        };
         
-        if (pos.type === 'wall') {
+        // Simple distance check against existing points
+        let tooClose = false;
+        for(let p of groundPoints) {
+            const dx = p.x - candidate.x;
+            const dz = p.z - candidate.z;
+            if (Math.sqrt(dx*dx + dz*dz) < 3.0) tooClose = true;
+        }
+        
+        if(!tooClose) groundPoints.push(candidate);
+    }
+
+    groundPoints.forEach(p => {
+        objectConfigs.push({
+            type: 'floor',
+            x: p.x,
+            y: -3.5, // Floor level
+            z: p.z,
+            rotY: Math.random() * Math.PI // Random initial rotation
+        });
+    });
+
+    // Create the meshes based on config
+    objectConfigs.forEach((config, index) => {
+        let mesh;
+        
+        if (config.type === 'wall') {
+            // Wall Panel (Static)
             const group = new THREE.Group();
             
-            const baseGeo = new THREE.BoxGeometry(0.2, 1, 1);
+            // Base
+            const baseGeo = new THREE.BoxGeometry(0.2, 1.5, 1.5);
             const baseMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
             const base = new THREE.Mesh(baseGeo, baseMat);
             group.add(base);
 
-            const spinGeo = new THREE.BoxGeometry(0.5, 1.8, 0.2); 
-            const spinMat = new THREE.MeshStandardMaterial({ 
+            // Screen/Interface
+            const screenGeo = new THREE.BoxGeometry(0.1, 1.2, 1.2); 
+            const screenMat = new THREE.MeshStandardMaterial({ 
                 color: Math.random() * 0xffffff,
-                emissive: 0x222222,
+                emissive: 0x111111,
                 roughness: 0.3
             });
-            const spinner = new THREE.Mesh(spinGeo, spinMat);
-            spinner.position.x = 0.4; 
-            
-            const lightGeo = new THREE.SphereGeometry(0.2);
-            const lightMat = new THREE.MeshStandardMaterial({ color: 0x00FF00, emissive: 0x00FF00 });
-            const light = new THREE.Mesh(lightGeo, lightMat);
-            light.position.y = 0.6;
-            spinner.add(light);
-            
-            group.add(spinner);
+            const screen = new THREE.Mesh(screenGeo, screenMat);
+            screen.position.x = 0.15; // Pop out
+            group.add(screen);
             
             mesh = group;
-            mesh.userData.rotatePart = spinner; 
             
         } else {
-            // Floor Object
+            // Floor Object (Rotating)
             if (level % 2 !== 0) { 
-                 const geo = new THREE.IcosahedronGeometry(1.5, 0);
+                 const geo = new THREE.IcosahedronGeometry(1.2, 0);
                  const mat = new THREE.MeshStandardMaterial({ 
                      color: 0xff0000, 
                      wireframe: true, 
@@ -233,7 +255,7 @@ function createInteractiveObjects(level) {
                  });
                  mesh = new THREE.Mesh(geo, mat);
             } else { 
-                 const geo = new THREE.TorusKnotGeometry(1, 0.3, 100, 16);
+                 const geo = new THREE.TorusKnotGeometry(0.8, 0.25, 100, 16);
                  const mat = new THREE.MeshStandardMaterial({ 
                      color: 0x00ff00, 
                      metalness: 0.8, 
@@ -242,32 +264,33 @@ function createInteractiveObjects(level) {
                  mesh = new THREE.Mesh(geo, mat);
             }
             
-            const pedGeo = new THREE.CylinderGeometry(2, 2.5, 1, 32);
+            // Pedestal
+            const pedGeo = new THREE.CylinderGeometry(1.5, 2, 1, 32);
             const pedMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
             const ped = new THREE.Mesh(pedGeo, pedMat);
-            ped.position.set(pos.x, pos.y - 1.5, pos.z);
+            ped.position.set(config.x, config.y - 1.2, config.z);
             scene.add(ped);
-            
-            mesh.userData.rotatePart = mesh; 
         }
 
-        mesh.position.set(pos.x, pos.y, pos.z);
-        mesh.rotation.y = pos.rotY;
+        mesh.position.set(config.x, config.y, config.z);
+        mesh.rotation.y = config.rotY;
         
-        // --- KEY FIX HERE ---
-        // 1. First, apply userData to children (excluding the parent)
+        // Set UserData
+        mesh.userData.type = 'interactive';
+        mesh.userData.questionIndex = index;
+        mesh.userData.posType = config.type; // 'wall' or 'floor'
+        
+        // Random rotation parameters for floor objects
+        if (config.type === 'floor') {
+            mesh.userData.rotSpeed = (Math.random() * 0.03) + 0.01;
+        }
+
+        // Apply userData to all children for raycasting
         mesh.traverse((child) => {
-            if (child !== mesh) { // Prevent overwriting the parent's data
+            if (child !== mesh) { 
                 child.userData = { type: 'interactive', parent: mesh };
             }
         });
-
-        // 2. Then set the parent's specific interactive data
-        mesh.userData.type = 'interactive';
-        mesh.userData.questionIndex = index;
-        mesh.userData.rotSpeed = rotationSpeed * rotationDir;
-        mesh.userData.posType = pos.type;
-        // Note: rotatePart was already set above, so we keep it.
 
         scene.add(mesh);
         objects.push(mesh);
@@ -278,16 +301,11 @@ function animate() {
     requestAnimationFrame(animate);
     
     objects.forEach(obj => {
-        // Now this check will succeed because userData wasn't wiped!
-        if (obj.userData.type === 'interactive' && obj.userData.rotatePart) {
-            const speed = obj.userData.rotSpeed || 0.03;
-            
-            if (obj.userData.posType === 'floor') {
-                obj.userData.rotatePart.rotation.y += speed;
-                obj.userData.rotatePart.rotation.z += speed * 0.5;
-            } else {
-                obj.userData.rotatePart.rotation.x += speed * 5; 
-            }
+        // ONLY rotate if it's a floor object
+        if (obj.userData.type === 'interactive' && obj.userData.posType === 'floor') {
+            const speed = obj.userData.rotSpeed || 0.02;
+            obj.rotation.y += speed;
+            obj.rotation.z += speed * 0.5;
         }
     });
     
