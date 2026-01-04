@@ -131,19 +131,23 @@ function createRoom(theme) {
     createDoor(theme);
 }
 
+// Check your main.js for this specific function
 function createDoor(theme) {
     const doorGeometry = new THREE.BoxGeometry(3, 5, 0.2);
     const doorMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0x8B4513, // Standard wood brown initially
+        color: 0x8B4513, 
         roughness: 0.4 
     });
     const door = new THREE.Mesh(doorGeometry, doorMaterial);
     door.position.set(0, -2.5, 5); // Front of room
-    door.userData = { type: 'door', locked: true };
-    scene.add(door);
-    objects.push(door); // Make door clickable
     
-    // Frame
+    // IMPORTANT: Ensure these properties are set
+    door.userData = { type: 'door', locked: true }; 
+    
+    scene.add(door);
+    objects.push(door); // IMPORTANT: This makes the door clickable
+    
+    // Frame (Visual only)
     const frameGeo = new THREE.BoxGeometry(3.5, 6, 0.3);
     const frameMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
     const frame = new THREE.Mesh(frameGeo, frameMat);
