@@ -8,21 +8,20 @@ let gameTimer;
 let currentLevel = 1;
 const MAX_LEVELS = 5;
 
-// Visual Themes for each room
+// Visual Themes
 const ROOM_THEMES = {
-    1: { wall: 0xE0E0E0, floor: 0x8D6E63, light: 0xFFFFFF }, // Classroom
-    2: { wall: 0x78909C, floor: 0x37474F, light: 0xCDDC39 }, // Lab
-    3: { wall: 0x424242, floor: 0x212121, light: 0xFF9800 }, // Power Plant
-    4: { wall: 0x263238, floor: 0x000000, light: 0x00BCD4 }, // High Voltage
-    5: { wall: 0x1A237E, floor: 0x000000, light: 0xD500F9 }  // Quantum Core
+    1: { wall: 0xE0E0E0, floor: 0x8D6E63, light: 0xFFFFFF }, 
+    2: { wall: 0x78909C, floor: 0x37474F, light: 0xCDDC39 },
+    3: { wall: 0x424242, floor: 0x212121, light: 0xFF9800 },
+    4: { wall: 0x263238, floor: 0x000000, light: 0x00BCD4 },
+    5: { wall: 0x1A237E, floor: 0x000000, light: 0xD500F9 } 
 };
 
 function init() {
     scene = new THREE.Scene();
     
-    // Camera setup
     camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 6, 18); 
+    camera.position.set(0, 8, 20); 
     
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -39,7 +38,13 @@ function init() {
     controls.maxPolarAngle = Math.PI / 2 - 0.1;
     controls.target.set(0, 0, 0); 
     
-    questionManager = new QuestionManager();
+    // Check if QuestionManager exists
+    if (typeof QuestionManager !== 'undefined') {
+        questionManager = new QuestionManager();
+    } else {
+        console.error("QuestionManager not loaded. Check questions.js");
+    }
+
     setupEventListeners();
     
     animate();
@@ -65,18 +70,19 @@ function loadLevel(level) {
     scene.add(ambientLight);
     
     const pointLight = new THREE.PointLight(theme.light, 1, 40);
-    pointLight.position.set(0, 8, 0);
+    pointLight.position.set(0, 10, 0);
     pointLight.castShadow = true;
     scene.add(pointLight);
 
     createRoom(theme);
     createInteractiveObjects(level);
     
-    questionManager.loadLevel(level);
-    
-    updateHUD();
-    const levelDisplay = document.getElementById('level-display');
-    if(levelDisplay) levelDisplay.textContent = `Level: ${level} - ${questionManager.getTheme()}`;
+    if (questionManager) {
+        questionManager.loadLevel(level);
+        updateHUD();
+        const levelDisplay = document.getElementById('level-display');
+        if(levelDisplay) levelDisplay.textContent = `Level: ${level} - ${questionManager.getTheme()}`;
+    }
 }
 
 function createRoom(theme) {
@@ -105,7 +111,7 @@ function createRoom(theme) {
     const floorMat = new THREE.MeshStandardMaterial({ 
         color: theme.floor, 
         roughness: 0.8,
-        metalness: 0.2
+        metalness: 0.2 
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
@@ -119,12 +125,10 @@ function createRoom(theme) {
     ceiling.position.y = roomHeight/2;
     scene.add(ceiling);
 
-    // Back Wall
+    // Walls
     createWall(roomWidth, roomHeight, 0.5, theme.wall, 0, 0, -roomDepth/2); 
-    // Left Wall
-    createWall(roomDepth, roomHeight, 0.5, theme.wall, -roomWidth/2, 0, 0, Math.PI/2);
-    // Right Wall
-    createWall(roomDepth, roomHeight, 0.5, theme.wall, roomWidth/2, 0, 0, Math.PI/2);
+    createWall(roomDepth, roomHeight, 0.5, theme.wall, -roomWidth/2, 0, 0, Math.PI/2); 
+    createWall(roomDepth, roomHeight, 0.5, theme.wall, roomWidth/2, 0, 0, Math.PI/2); 
 
     createSideDoor(roomWidth, roomDepth);
 }
@@ -132,16 +136,13 @@ function createRoom(theme) {
 function createSideDoor(roomWidth, roomDepth) {
     const doorW = 4;
     const doorH = 6;
+    const doorZ = -5;
     
     const doorGeometry = new THREE.BoxGeometry(doorW, doorH, 0.2);
-    const doorMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0x8B4513, 
-        roughness: 0.4 
-    });
+    const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.4 });
     const door = new THREE.Mesh(doorGeometry, doorMaterial);
     
-    // Position: Right Wall, Deep in the back
-    door.position.set(roomWidth/2 - 0.2, -2, -5); 
+    door.position.set(roomWidth/2 - 0.2, -2, doorZ); 
     door.rotation.y = Math.PI / 2;
     
     door.userData = { type: 'door', locked: true };
@@ -161,29 +162,25 @@ function createInteractiveObjects(level) {
     const wallOffset = 6.8; 
     const backWallZ = -9.8; 
     
-    // Define all possible slots (Asymmetry logic)
     let possibleSlots = [];
 
-    // 1. LEFT WALL Slots
+    // Left Wall Slots
     for(let z = -6; z <= 6; z += 4) {
         possibleSlots.push({ x: -wallOffset, y: 0, z: z, type: 'wall', rotY: Math.PI/2 });
     }
-
-    // 2. RIGHT WALL Slots (Avoid door at z=-5)
+    // Right Wall Slots (Avoid door at z=-5)
     for(let z = 0; z <= 6; z += 4) {
          possibleSlots.push({ x: wallOffset, y: 0, z: z, type: 'wall', rotY: -Math.PI/2 });
     }
-
-    // 3. BACK WALL Slots
+    // Back Wall Slots
     for(let x = -4; x <= 4; x += 4) {
         possibleSlots.push({ x: x, y: 0, z: backWallZ + 0.5, type: 'wall', rotY: 0 });
     }
 
-    // Shuffle and pick 4 Wall Locations
     possibleSlots.sort(() => Math.random() - 0.5);
     const selectedPositions = possibleSlots.slice(0, 4);
     
-    // Add 1 Floor Location (Randomized Center)
+    // Add 1 Floor Object
     selectedPositions.push({ 
         x: (Math.random() * 6) - 3, 
         y: -3.5, 
@@ -194,21 +191,17 @@ function createInteractiveObjects(level) {
 
     selectedPositions.forEach((pos, index) => {
         let mesh;
-        
-        // Randomize rotation speed and direction
-        const rotationSpeed = (Math.random() * 0.04) + 0.01; 
+        const rotationSpeed = (Math.random() * 0.05) + 0.02; 
         const rotationDir = Math.random() < 0.5 ? 1 : -1;    
         
         if (pos.type === 'wall') {
             const group = new THREE.Group();
             
-            // Base (Fixed to wall)
             const baseGeo = new THREE.BoxGeometry(0.2, 1, 1);
             const baseMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
             const base = new THREE.Mesh(baseGeo, baseMat);
             group.add(base);
 
-            // Spinner (The part that rotates)
             const spinGeo = new THREE.BoxGeometry(0.5, 1.8, 0.2); 
             const spinMat = new THREE.MeshStandardMaterial({ 
                 color: Math.random() * 0xffffff,
@@ -216,13 +209,17 @@ function createInteractiveObjects(level) {
                 roughness: 0.3
             });
             const spinner = new THREE.Mesh(spinGeo, spinMat);
-            
-            // Offset spinner so it floats in front of the base
             spinner.position.x = 0.4; 
+            
+            const lightGeo = new THREE.SphereGeometry(0.2);
+            const lightMat = new THREE.MeshStandardMaterial({ color: 0x00FF00, emissive: 0x00FF00 });
+            const light = new THREE.Mesh(lightGeo, lightMat);
+            light.position.y = 0.6;
+            spinner.add(light);
+            
             group.add(spinner);
             
             mesh = group;
-            // Store reference to the spinning part
             mesh.userData.rotatePart = spinner; 
             
         } else {
@@ -251,22 +248,26 @@ function createInteractiveObjects(level) {
             ped.position.set(pos.x, pos.y - 1.5, pos.z);
             scene.add(ped);
             
-            mesh.userData.rotatePart = mesh; // Whole object rotates
+            mesh.userData.rotatePart = mesh; 
         }
 
         mesh.position.set(pos.x, pos.y, pos.z);
         mesh.rotation.y = pos.rotY;
         
-        // Setup UserData
+        // --- KEY FIX HERE ---
+        // 1. First, apply userData to children (excluding the parent)
+        mesh.traverse((child) => {
+            if (child !== mesh) { // Prevent overwriting the parent's data
+                child.userData = { type: 'interactive', parent: mesh };
+            }
+        });
+
+        // 2. Then set the parent's specific interactive data
         mesh.userData.type = 'interactive';
         mesh.userData.questionIndex = index;
         mesh.userData.rotSpeed = rotationSpeed * rotationDir;
         mesh.userData.posType = pos.type;
-
-        // Ensure raycasting hits children
-        mesh.traverse((child) => {
-            child.userData = { type: 'interactive', parent: mesh };
-        });
+        // Note: rotatePart was already set above, so we keep it.
 
         scene.add(mesh);
         objects.push(mesh);
@@ -277,17 +278,15 @@ function animate() {
     requestAnimationFrame(animate);
     
     objects.forEach(obj => {
-        // Only animate if we have a designated rotating part
+        // Now this check will succeed because userData wasn't wiped!
         if (obj.userData.type === 'interactive' && obj.userData.rotatePart) {
-            const speed = obj.userData.rotSpeed || 0.02;
+            const speed = obj.userData.rotSpeed || 0.03;
             
             if (obj.userData.posType === 'floor') {
-                // Floor objects spin on Y (Vertical axis) and Z (Tumble)
                 obj.userData.rotatePart.rotation.y += speed;
                 obj.userData.rotatePart.rotation.z += speed * 0.5;
             } else {
-                // Wall objects spin on local X axis (Facing out like a fan)
-                obj.userData.rotatePart.rotation.x += speed * 3; 
+                obj.userData.rotatePart.rotation.x += speed * 5; 
             }
         }
     });
@@ -296,11 +295,10 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-// ... (Rest of functions: startGame, updateTimerDisplay, etc. remain unchanged)
-// To ensure they are present, here are the simplified versions:
-
+// -- Helpers --
 function startGame() {
-    questionManager.reset();
+    if(questionManager) questionManager.reset();
+    
     ['start-screen', 'end-screen'].forEach(id => {
         const el = document.getElementById(id);
         if(el) el.classList.add('hidden');
@@ -333,6 +331,7 @@ function updateTimerDisplay() {
 }
 
 function updateHUD() {
+    if(!questionManager) return;
     document.getElementById('score').textContent = `Score: ${questionManager.score}`;
     document.getElementById('hints').textContent = `Hints: ${questionManager.hints}`;
 }
