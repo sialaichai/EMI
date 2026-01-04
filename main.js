@@ -458,7 +458,7 @@ function submitAnswer() {
     } else {
         // Just show incorrect message, don't close modal, don't break game state
         if(feedbackEl) {
-            feedbackEl.textContent = 'Incorrect! Try again.';
+            feedbackEl.textContent = 'Incorrect! -20 Points. Try again.';
             feedbackEl.style.color = '#e74c3c';
         }
     }
@@ -466,7 +466,8 @@ function submitAnswer() {
 
 function showHint() {
     if (questionManager.hints > 0) {
-        document.getElementById('feedback').textContent = `Hint: ${questionManager.getHint()}`;
+        document.getElementById('feedback').textContent = `Hint (-50 pts): ${questionManager.getHint()}`;
+        document.getElementById('feedback').style.color = '#f39c12'; // Orange for caution
         updateHUD();
         document.getElementById('hint-button').disabled = questionManager.hints <= 0;
     }
