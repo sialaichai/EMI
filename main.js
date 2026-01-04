@@ -161,24 +161,26 @@ function createInteractiveObjects(level) {
     const objectConfigs = [];
     
     // 1. Back Wall Object (Pulsating)
+    // Wall is at Z = -10. 
     objectConfigs.push({
         type: 'wall',
         wallSide: 'back',
-        x: (Math.random() * 10) - 5,
+        x: (Math.random() * 8) - 4,
         y: 0,
-        z: -9.5,
+        z: -9.8, // Close to wall
         rotY: 0,
         animType: 'pulse'
     });
 
     // 2. Left Wall Object (Flashing)
+    // Wall is at X = -7.
     objectConfigs.push({
         type: 'wall',
         wallSide: 'left',
-        x: -6.5,
+        x: -6.8, // Close to wall
         y: 0,
-        z: (Math.random() * 16) - 8,
-        rotY: Math.PI / 2,
+        z: (Math.random() * 12) - 6,
+        rotY: Math.PI / 2, // Rotated 90 degrees
         animType: 'flash'
     });
 
@@ -218,17 +220,19 @@ function createInteractiveObjects(level) {
         if (config.type === 'wall') {
             const group = new THREE.Group();
             
-            // Mounting Base
+            // Mounting Base - CHANGED GEOMETRY
+            // Now Wide (1.5) and Tall (1.5) but Thin (0.3)
+            // This ensures it sits flat parallel to the wall surface
             const base = new THREE.Mesh(
-                new THREE.BoxGeometry(0.3, 1.5, 1.5), 
-                new THREE.MeshStandardMaterial({ color: 0x111111 })
+                new THREE.BoxGeometry(1.5, 1.5, 0.3), 
+                new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 })
             );
             group.add(base);
 
             // Create Interesting Sci-Fi Geometry
             let artMesh;
             if (config.animType === 'pulse') {
-                // "Quantum Resonator" - Wireframe Icosahedron
+                // "Quantum Resonator"
                 const geo = new THREE.IcosahedronGeometry(0.8, 0);
                 const mat = new THREE.MeshStandardMaterial({ 
                     color: 0x00FFFF, 
@@ -238,7 +242,6 @@ function createInteractiveObjects(level) {
                 });
                 artMesh = new THREE.Mesh(geo, mat);
                 
-                // Add an inner core
                 const core = new THREE.Mesh(
                     new THREE.OctahedronGeometry(0.4),
                     new THREE.MeshStandardMaterial({ color: 0xFFFFFF, emissive: 0xFFFFFF })
@@ -246,7 +249,7 @@ function createInteractiveObjects(level) {
                 artMesh.add(core);
                 
             } else {
-                // "Flux Node" - Torus Knot with flashing light
+                // "Flux Node"
                 const geo = new THREE.TorusKnotGeometry(0.5, 0.15, 64, 8);
                 const mat = new THREE.MeshStandardMaterial({ 
                     color: 0xFF00FF, 
@@ -258,7 +261,10 @@ function createInteractiveObjects(level) {
                 artMesh = new THREE.Mesh(geo, mat);
             }
             
-            artMesh.position.x = 0.6; // Stick out from base
+            // Move art mesh OUT from the base along the Z axis (thickness)
+            // Since the base is 0.3 thick, 0.6 places it nicely in front
+            artMesh.position.z = 0.6; 
+            
             group.add(artMesh);
             mesh = group;
             
@@ -304,7 +310,7 @@ function createInteractiveObjects(level) {
         mesh.userData.type = 'interactive';
         mesh.userData.questionIndex = index;
         mesh.userData.animType = config.animType;
-        mesh.userData.posType = config.type; // 'wall' or 'floor'
+        mesh.userData.posType = config.type; 
 
         // Apply userData to children for raycasting
         mesh.traverse((child) => {
@@ -321,7 +327,7 @@ function createInteractiveObjects(level) {
 function animate() {
     requestAnimationFrame(animate);
     
-    const time = Date.now() * 0.001; // Current time in seconds
+    const time = Date.now() * 0.001; 
 
     objects.forEach(obj => {
         if (obj.userData.type === 'interactive' && obj.userData.animPart) {
@@ -334,24 +340,17 @@ function animate() {
                 part.rotation.z += 0.01;
             } 
             else if (type === 'pulse') {
-                // Back Wall: Breathing/Pulsing effect
-                const scale = 1 + Math.sin(time * 2) * 0.1; // Scale 0.9 to 1.1
+                // Back Wall: Breathing
+                const scale = 1 + Math.sin(time * 2) * 0.1; 
                 part.scale.set(scale, scale, scale);
-                
-                // Pulse Emissive Intensity
                 part.material.emissiveIntensity = 0.5 + Math.sin(time * 3) * 0.4;
-                
-                // Slow rotation just for look (internal to object)
                 part.rotation.z = Math.sin(time) * 0.2;
                 part.rotation.y += 0.01;
             } 
             else if (type === 'flash') {
-                // Left Wall: Strobe/Flash effect
-                // Rapid flicker
+                // Left Wall: Strobe
                 const flash = Math.sin(time * 15) > 0.5 ? 2.0 : 0.2;
                 part.material.emissiveIntensity = flash;
-                
-                // Tech spin (internal)
                 part.rotation.x += 0.02;
                 part.rotation.z += 0.01;
             }
