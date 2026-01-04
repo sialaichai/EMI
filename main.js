@@ -20,9 +20,9 @@ const ROOM_THEMES = {
 function init() {
     scene = new THREE.Scene();
     
-    // Adjusted Camera for Deeper Room view
+    // Camera setup
     camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 6, 18); // Moved back and up to see over the "near" area
+    camera.position.set(0, 6, 18); 
     
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -37,7 +37,6 @@ function init() {
     controls.minDistance = 5;
     controls.maxDistance = 30;
     controls.maxPolarAngle = Math.PI / 2 - 0.1;
-    // Target the center of the room so rotation feels natural
     controls.target.set(0, 0, 0); 
     
     questionManager = new QuestionManager();
@@ -46,7 +45,6 @@ function init() {
     animate();
     window.addEventListener('resize', onWindowResize);
     
-    // Show start screen if not already hidden (reloads)
     const startScreen = document.getElementById('start-screen');
     if(startScreen) startScreen.classList.remove('hidden');
 }
@@ -54,42 +52,34 @@ function init() {
 function loadLevel(level) {
     currentLevel = level;
     
-    // 1. Clear existing scene
     while(scene.children.length > 0){ 
         scene.remove(scene.children[0]); 
     }
     objects = []; 
 
-    // 2. Set Background
     scene.background = new THREE.Color(0x111111);
 
-    // 3. Setup Lights
     const theme = ROOM_THEMES[level];
     
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
     scene.add(ambientLight);
     
-    // Move main light to center of the deeper room
     const pointLight = new THREE.PointLight(theme.light, 1, 40);
     pointLight.position.set(0, 8, 0);
     pointLight.castShadow = true;
     scene.add(pointLight);
 
-    // 4. Create Environment
     createRoom(theme);
     createInteractiveObjects(level);
     
-    // 5. Load Questions
     questionManager.loadLevel(level);
     
-    // 6. Update UI
     updateHUD();
     const levelDisplay = document.getElementById('level-display');
     if(levelDisplay) levelDisplay.textContent = `Level: ${level} - ${questionManager.getTheme()}`;
 }
 
 function createRoom(theme) {
-    // New Dimensions: Deeper and slightly wider
     const roomWidth = 14;
     const roomDepth = 20; 
     const roomHeight = 10;
@@ -119,7 +109,7 @@ function createRoom(theme) {
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -roomHeight/2 + 0.1; // Slightly adjust to align with walls
+    floor.position.y = -roomHeight/2 + 0.1;
     floor.receiveShadow = true;
     scene.add(floor);
 
@@ -129,19 +119,12 @@ function createRoom(theme) {
     ceiling.position.y = roomHeight/2;
     scene.add(ceiling);
 
-    // Walls
-    const wallThick = 0.5;
-    
-    // Back Wall (Far end)
-    createWall(roomWidth, roomHeight, wallThick, theme.wall, 0, 0, -roomDepth/2); 
-    
+    // Back Wall
+    createWall(roomWidth, roomHeight, 0.5, theme.wall, 0, 0, -roomDepth/2); 
     // Left Wall
-    createWall(roomDepth, roomHeight, wallThick, theme.wall, -roomWidth/2, 0, 0, Math.PI/2);
-    
+    createWall(roomDepth, roomHeight, 0.5, theme.wall, -roomWidth/2, 0, 0, Math.PI/2);
     // Right Wall
-    createWall(roomDepth, roomHeight, wallThick, theme.wall, roomWidth/2, 0, 0, Math.PI/2);
-
-    // NOTE: "Front" wall (near camera) is intentionally omitted to prevent blocking view
+    createWall(roomDepth, roomHeight, 0.5, theme.wall, roomWidth/2, 0, 0, Math.PI/2);
 
     createSideDoor(roomWidth, roomDepth);
 }
@@ -150,7 +133,7 @@ function createSideDoor(roomWidth, roomDepth) {
     const doorW = 4;
     const doorH = 6;
     
-    // Create Door Geometry
+    // Door setup
     const doorGeometry = new THREE.BoxGeometry(doorW, doorH, 0.2);
     const doorMaterial = new THREE.MeshStandardMaterial({ 
         color: 0x8B4513, 
@@ -158,49 +141,46 @@ function createSideDoor(roomWidth, roomDepth) {
     });
     const door = new THREE.Mesh(doorGeometry, doorMaterial);
     
-    // Position: On the Right Wall (x = roomWidth/2), towards the back (z = -5)
-    // Rotating it 90 degrees (PI/2) to align with the side wall
+    // Position: Right Wall, Deep in the back (z = -5)
     door.position.set(roomWidth/2 - 0.2, -2, -5); 
     door.rotation.y = Math.PI / 2;
     
     door.userData = { type: 'door', locked: true };
     scene.add(door);
-    objects.push(door); // Clickable
+    objects.push(door);
     
-    // Door Frame
+    // Frame
     const frameGeo = new THREE.BoxGeometry(doorW + 0.5, doorH + 0.5, 0.3);
     const frameMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
     const frame = new THREE.Mesh(frameGeo, frameMat);
     frame.position.copy(door.position);
-    frame.position.x += 0.1; // Slightly offset into wall
+    frame.position.x += 0.1;
     frame.rotation.y = Math.PI / 2;
     scene.add(frame);
 }
 
 function createInteractiveObjects(level) {
-    // We need 5 objects now.
-    // Positions: x, y, z. 
-    // y=0 is eye level (approx), y=-4 is floor. Walls are at x = +/- 7.
+    const wallOffset = 6.8; 
     
-    const wallOffset = 6.8; // Slightly inside the 7 unit wall
     const positions = [
-        // Left Wall Panels
+        // Left Wall Panels (Safe to keep as is)
         { x: -wallOffset, y: 0, z: 4, type: 'wall', rotY: Math.PI/2 },
         { x: -wallOffset, y: 0, z: -4, type: 'wall', rotY: Math.PI/2 },
         
-        // Right Wall Panels
-        { x: wallOffset, y: 0, z: 4, type: 'wall', rotY: -Math.PI/2 },
-        { x: wallOffset, y: 0, z: -4, type: 'wall', rotY: -Math.PI/2 },
+        // Right Wall Panels (MOVED FORWARD to avoid Door at z=-5)
+        { x: wallOffset, y: 0, z: 5, type: 'wall', rotY: -Math.PI/2 }, // Closer to camera
+        { x: wallOffset, y: 0, z: 0, type: 'wall', rotY: -Math.PI/2 }, // Middle
         
         // Center Floor Device (The "Boss" object)
-        { x: 0, y: -3.5, z: -7, type: 'floor', rotY: 0 }
+        { x: 0, y: -3.5, z: -2, type: 'floor', rotY: 0 } // Moved slightly forward for visibility
     ];
 
     positions.forEach((pos, index) => {
         let mesh;
+        let isRotatable = false; // Default to static
         
         if (pos.type === 'wall') {
-            // Create a High-Tech Wall Panel
+            // High-Tech Wall Panel
             const group = new THREE.Group();
             
             // Panel Base
@@ -220,15 +200,17 @@ function createInteractiveObjects(level) {
                 emissiveIntensity: 0.5
             });
             const screen = new THREE.Mesh(screenGeo, screenMat);
-            screen.position.x = 0.26; // Slightly popping out
+            screen.position.x = 0.26; 
             screen.rotation.y = Math.PI/2;
             group.add(screen);
             
             mesh = group;
             
         } else {
-            // Center Floor Object - Changes based on level (Visual variety)
-            if (level % 2 !== 0) { // Odd Levels: Coil/Core
+            // Center Floor Object - This one SHOULD spin
+            isRotatable = true;
+            
+            if (level % 2 !== 0) { 
                  const geo = new THREE.IcosahedronGeometry(1.5, 0);
                  const mat = new THREE.MeshStandardMaterial({ 
                      color: 0xff0000, 
@@ -236,7 +218,7 @@ function createInteractiveObjects(level) {
                      emissive: 0x550000 
                  });
                  mesh = new THREE.Mesh(geo, mat);
-            } else { // Even Levels: Magnet/Machine
+            } else { 
                  const geo = new THREE.TorusKnotGeometry(1, 0.3, 100, 16);
                  const mat = new THREE.MeshStandardMaterial({ 
                      color: 0x00ff00, 
@@ -246,7 +228,6 @@ function createInteractiveObjects(level) {
                  mesh = new THREE.Mesh(geo, mat);
             }
             
-            // Add a pedestal for the center object
             const pedGeo = new THREE.CylinderGeometry(2, 2.5, 1, 32);
             const pedMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
             const ped = new THREE.Mesh(pedGeo, pedMat);
@@ -257,11 +238,13 @@ function createInteractiveObjects(level) {
         mesh.position.set(pos.x, pos.y, pos.z);
         mesh.rotation.y = pos.rotY;
         
-        // Interactive Data
-        // IMPORTANT: We assign a distinct 'questionIndex' (0-4) to each object
-        mesh.userData = { type: 'interactive', questionIndex: index };
+        // Add specific flag to control animation
+        mesh.userData = { 
+            type: 'interactive', 
+            questionIndex: index,
+            rotatable: isRotatable 
+        };
         
-        // Ensure children are also clickable
         mesh.traverse((child) => {
             child.userData = { type: 'interactive', parent: mesh };
         });
@@ -270,10 +253,10 @@ function createInteractiveObjects(level) {
         objects.push(mesh);
     });
 }
+
 function startGame() {
     questionManager.reset();
     
-    // Hide screens
     ['start-screen', 'end-screen'].forEach(id => {
         const el = document.getElementById(id);
         if(el) el.classList.add('hidden');
@@ -325,11 +308,20 @@ function onObjectClick(event) {
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, camera);
     
-    const intersects = raycaster.intersectObjects(objects);
+    const intersects = raycaster.intersectObjects(objects, true); // true = recursive check for groups
     
     if (intersects.length > 0) {
-        const object = intersects[0].object;
-        const target = object.parent && object.parent.userData.type ? object.parent : object;
+        let target = intersects[0].object;
+        
+        // Traverse up to find the main interactive parent
+        while(target.parent && target.userData.type !== 'interactive' && target.userData.type !== 'door') {
+            target = target.parent;
+        }
+        
+        // Check parent's user data if child doesn't have it
+        if (!target.userData.type && target.parent && target.parent.userData.type) {
+            target = target.parent;
+        }
 
         if (target.userData.type === 'interactive') {
             showQuestion(target);
@@ -344,6 +336,9 @@ function onObjectClick(event) {
 }
 
 function showQuestion(object) {
+    // If the specific object is already solved, maybe show a message?
+    // For now, we assume standard loop.
+    
     if (!questionManager.hasMoreQuestions()) {
         unlockDoor();
         return;
@@ -472,8 +467,9 @@ function restartGame() {
 function animate() {
     requestAnimationFrame(animate);
     
+    // Only rotate objects that are marked as rotatable
     objects.forEach(obj => {
-        if (obj.userData.type === 'interactive') {
+        if (obj.userData.type === 'interactive' && obj.userData.rotatable) {
             obj.rotation.y += 0.01;
             obj.rotation.z += 0.005;
         }
