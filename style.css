@@ -182,3 +182,56 @@ select {
 button {
     cursor: pointer; /* Ensures the mouse turns to a hand over the button */
 }
+
+/* Make the list look cleaner */
+.mission-list {
+    text-align: left;
+    margin: 20px auto;
+    width: 80%;
+    line-height: 1.6;
+}
+
+/* Container for the scoring rules */
+.scoring-box {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 15px;
+    margin: 20px auto;
+    width: 90%;
+}
+
+.scoring-box h4 {
+    margin-bottom: 10px;
+    color: #ffd700; /* Gold color for title */
+    text-transform: uppercase;
+    font-size: 0.9em;
+    letter-spacing: 1px;
+}
+
+/* Individual rows */
+.score-rule {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+    padding: 5px 0;
+    font-size: 0.95rem;
+}
+
+.score-rule:last-child {
+    border-bottom: none;
+}
+
+/* Color coding for points */
+.points {
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+}
+
+.points.plus {
+    color: #2ecc71; /* Green */
+}
+
+.points.minus {
+    color: #e74c3c; /* Red */
+}
