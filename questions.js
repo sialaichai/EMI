@@ -670,17 +670,11 @@ class QuestionManager {
         if (!this.questions[this.currentQuestionIndex]) return false;
         
         const correct = this.questions[this.currentQuestionIndex].correct === answerIndex;
-        
         if (correct) {
-            // Only move to the next question if the answer is CORRECT
             this.score += 100 * this.currentLevel;
             this.currentQuestionIndex++;
-        } else {
-            // If wrong, we do NOT increment index. 
-            // Optional: You could apply a score penalty here if you want.
-            // this.score -= 50; 
         }
-        
+        // No else block needed here for indexing
         return correct;
     }
     
