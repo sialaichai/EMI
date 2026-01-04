@@ -178,68 +178,98 @@ function createSideDoor(roomWidth, roomDepth) {
 }
 
 function createInteractiveObjects(level) {
-    // Distributed along the Z-axis (Depth)
+    // We need 5 objects now.
+    // Positions: x, y, z. 
+    // y=0 is eye level (approx), y=-4 is floor. Walls are at x = +/- 7.
+    
+    const wallOffset = 6.8; // Slightly inside the 7 unit wall
     const positions = [
-        { x: -3, y: -4, z: 6 },   // Near (Close to camera)
-        { x: 3, y: -4, z: 0 },    // Middle
-        { x: -3, y: -4, z: -6 }   // Far (Near back wall)
+        // Left Wall Panels
+        { x: -wallOffset, y: 0, z: 4, type: 'wall', rotY: Math.PI/2 },
+        { x: -wallOffset, y: 0, z: -4, type: 'wall', rotY: Math.PI/2 },
+        
+        // Right Wall Panels
+        { x: wallOffset, y: 0, z: 4, type: 'wall', rotY: -Math.PI/2 },
+        { x: wallOffset, y: 0, z: -4, type: 'wall', rotY: -Math.PI/2 },
+        
+        // Center Floor Device (The "Boss" object)
+        { x: 0, y: -3.5, z: -7, type: 'floor', rotY: 0 }
     ];
 
     positions.forEach((pos, index) => {
         let mesh;
         
-        if (level === 1 || level === 2) {
-            // Basic Shapes
-            const geo = index === 0 ? new THREE.BoxGeometry(1.5, 1.5, 1.5) : 
-                       index === 1 ? new THREE.SphereGeometry(1) :
-                       new THREE.CylinderGeometry(0.8, 0.8, 1.5);
-            const mat = new THREE.MeshStandardMaterial({ 
-                color: Math.random() * 0xffffff,
-                roughness: 0.5,
-                metalness: 0.5
+        if (pos.type === 'wall') {
+            // Create a High-Tech Wall Panel
+            const group = new THREE.Group();
+            
+            // Panel Base
+            const panelGeo = new THREE.BoxGeometry(0.5, 2, 1.5);
+            const panelMat = new THREE.MeshStandardMaterial({ 
+                color: 0x333333,
+                roughness: 0.2
             });
-            mesh = new THREE.Mesh(geo, mat);
+            const panel = new THREE.Mesh(panelGeo, panelMat);
+            group.add(panel);
+            
+            // Glowing Screen
+            const screenGeo = new THREE.PlaneGeometry(1.2, 1.6);
+            const screenMat = new THREE.MeshStandardMaterial({ 
+                color: 0x00FFFF, 
+                emissive: 0x00AAAA,
+                emissiveIntensity: 0.5
+            });
+            const screen = new THREE.Mesh(screenGeo, screenMat);
+            screen.position.x = 0.26; // Slightly popping out
+            screen.rotation.y = Math.PI/2;
+            group.add(screen);
+            
+            mesh = group;
             
         } else {
-            // Advanced Sci-Fi Shapes for higher levels
-            if (index === 0) {
-                // Coil / Torus
-                const geo = new THREE.TorusKnotGeometry(0.6, 0.2, 64, 8);
-                const mat = new THREE.MeshStandardMaterial({ color: 0xB87333, metalness: 0.9, roughness: 0.1 }); 
-                mesh = new THREE.Mesh(geo, mat);
-            } else if (index === 1) {
-                // Floating Magnet
-                const geo = new THREE.BoxGeometry(0.6, 0.6, 2);
-                const mat = new THREE.MeshStandardMaterial({ color: 0xFF0000 }); 
-                mesh = new THREE.Mesh(geo, mat);
-                const blueGeo = new THREE.BoxGeometry(0.6, 0.6, 1);
-                const blueMesh = new THREE.Mesh(blueGeo, new THREE.MeshStandardMaterial({color: 0x0000FF}));
-                blueMesh.position.z = 0.5;
-                mesh.add(blueMesh);
-            } else {
-                // Core
-                const geo = new THREE.OctahedronGeometry(1, 0);
-                const mat = new THREE.MeshStandardMaterial({ color: 0x00FF00, wireframe: true, emissive: 0x002200 });
-                mesh = new THREE.Mesh(geo, mat);
+            // Center Floor Object - Changes based on level (Visual variety)
+            if (level % 2 !== 0) { // Odd Levels: Coil/Core
+                 const geo = new THREE.IcosahedronGeometry(1.5, 0);
+                 const mat = new THREE.MeshStandardMaterial({ 
+                     color: 0xff0000, 
+                     wireframe: true, 
+                     emissive: 0x550000 
+                 });
+                 mesh = new THREE.Mesh(geo, mat);
+            } else { // Even Levels: Magnet/Machine
+                 const geo = new THREE.TorusKnotGeometry(1, 0.3, 100, 16);
+                 const mat = new THREE.MeshStandardMaterial({ 
+                     color: 0x00ff00, 
+                     metalness: 0.8, 
+                     roughness: 0.1 
+                 });
+                 mesh = new THREE.Mesh(geo, mat);
             }
+            
+            // Add a pedestal for the center object
+            const pedGeo = new THREE.CylinderGeometry(2, 2.5, 1, 32);
+            const pedMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+            const ped = new THREE.Mesh(pedGeo, pedMat);
+            ped.position.set(pos.x, pos.y - 1.5, pos.z);
+            scene.add(ped);
         }
 
         mesh.position.set(pos.x, pos.y, pos.z);
+        mesh.rotation.y = pos.rotY;
+        
+        // Interactive Data
+        // IMPORTANT: We assign a distinct 'questionIndex' (0-4) to each object
         mesh.userData = { type: 'interactive', questionIndex: index };
-        mesh.castShadow = true;
+        
+        // Ensure children are also clickable
+        mesh.traverse((child) => {
+            child.userData = { type: 'interactive', parent: mesh };
+        });
+
         scene.add(mesh);
         objects.push(mesh);
-        
-        // Pedestal
-        const pedGeo = new THREE.CylinderGeometry(1, 1.2, 1, 32);
-        const pedMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
-        const ped = new THREE.Mesh(pedGeo, pedMat);
-        ped.position.set(pos.x, pos.y - 1.25, pos.z);
-        ped.receiveShadow = true;
-        scene.add(ped);
     });
 }
-
 function startGame() {
     questionManager.reset();
     
