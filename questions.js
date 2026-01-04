@@ -1,129 +1,149 @@
-const physicsQuestions = {
-    kinematics: [
-        {
-            question: "A car accelerates from rest at 3 m/s² for 5 seconds. What is its final velocity?",
-            options: ["15 m/s", "8 m/s", "20 m/s", "12 m/s"],
-            correct: 0,
-            hint: "Use the formula v = u + at, where u = 0"
-        },
-        {
-            question: "An object is dropped from a height of 45m. How long does it take to hit the ground? (g = 10 m/s²)",
-            options: ["3 seconds", "4.5 seconds", "9 seconds", "6 seconds"],
-            correct: 0,
-            hint: "Use h = ½gt²"
-        },
-        {
-            question: "A projectile is launched at 30 m/s at 45°. What is its maximum height?",
-            options: ["22.5 m", "45 m", "30 m", "15 m"],
-            correct: 0,
-            hint: "Use H = (v²sin²θ)/(2g)"
-        }
-    ],
-    dynamics: [
-        {
-            question: "A 5kg box is pushed with a force of 20N. What is its acceleration if friction is negligible?",
-            options: ["4 m/s²", "2.5 m/s²", "5 m/s²", "1 m/s²"],
-            correct: 0,
-            hint: "F = ma"
-        },
-        {
-            question: "What is the weight of a 60kg person on Earth? (g = 9.8 m/s²)",
-            options: ["588 N", "600 N", "60 N", "980 N"],
-            correct: 0,
-            hint: "Weight = mass × gravity"
-        },
-        {
-            question: "A car takes a turn at constant speed. Which force provides the centripetal acceleration?",
-            options: ["Friction", "Gravity", "Normal force", "Air resistance"],
-            correct: 0,
-            hint: "Think about what prevents the car from sliding outwards"
-        }
-    ],
-    energy: [
-        {
-            question: "A 2kg object is lifted 10m. How much potential energy does it gain? (g = 10 m/s²)",
-            options: ["200 J", "100 J", "20 J", "400 J"],
-            correct: 0,
-            hint: "PE = mgh"
-        },
-        {
-            question: "A 1000kg car moves at 20 m/s. What is its kinetic energy?",
-            options: ["200,000 J", "100,000 J", "400,000 J", "50,000 J"],
-            correct: 0,
-            hint: "KE = ½mv²"
-        },
-        {
-            question: "If 500J of work is done in moving a box 10m, what is the average force applied?",
-            options: ["50 N", "5000 N", "100 N", "5 N"],
-            correct: 0,
-            hint: "Work = Force × Distance"
-        }
-    ],
-    electricity: [
-        {
-            question: "Three 2Ω resistors are connected in parallel. What is their equivalent resistance?",
-            options: ["0.67 Ω", "6 Ω", "2 Ω", "1.5 Ω"],
-            correct: 0,
-            hint: "1/R_total = 1/R₁ + 1/R₂ + 1/R₃"
-        },
-        {
-            question: "A 12V battery is connected to a 4Ω resistor. What is the current?",
-            options: ["3 A", "48 A", "0.33 A", "8 A"],
-            correct: 0,
-            hint: "V = IR"
-        },
-        {
-            question: "What is the power dissipated in a 10Ω resistor with 2A current flowing through it?",
-            options: ["40 W", "20 W", "100 W", "5 W"],
-            correct: 0,
-            hint: "P = I²R"
-        }
-    ],
-    optics: [
-        {
-            question: "A convex lens has focal length 10cm. Where is the image formed for an object at 15cm?",
-            options: ["30 cm on opposite side", "6 cm on same side", "15 cm", "20 cm"],
-            correct: 0,
-            hint: "Use lens formula: 1/f = 1/v - 1/u"
-        },
-        {
-            question: "What is the speed of light in vacuum?",
-            options: ["3 × 10⁸ m/s", "3 × 10⁶ m/s", "3 × 10⁵ m/s", "3 × 10¹⁰ m/s"],
-            correct: 0,
-            hint: "Standard constant in physics"
-        },
-        {
-            question: "Which color of light has the longest wavelength?",
-            options: ["Red", "Violet", "Green", "Blue"],
-            correct: 0,
-            hint: "Remember ROYGBIV"
-        }
-    ]
+// questions.js
+const emiLevels = {
+    1: { // Bloom: Remember/Understand
+        theme: "The Classroom",
+        questions: [
+            {
+                question: "Which law states that an induced electromotive force (EMF) always opposes the change in magnetic flux that produced it?",
+                options: ["Ampere's Law", "Lenz's Law", "Gauss's Law", "Ohm's Law"],
+                correct: 1,
+                hint: "Think about conservation of energy and 'opposition'."
+            },
+            {
+                question: "What is the SI unit of Magnetic Flux?",
+                options: ["Tesla (T)", "Weber (Wb)", "Henry (H)", "Farad (F)"],
+                correct: 1,
+                hint: "Tesla is for field strength; this unit measures the total field passing through an area."
+            },
+            {
+                question: "Magnetic Flux (Φ) is defined as the product of Magnetic Field (B) and Area (A) times the cosine of the angle between them. What is the formula?",
+                options: ["Φ = B/A", "Φ = BA cos(θ)", "Φ = BA sin(θ)", "Φ = B + A"],
+                correct: 1,
+                hint: "It uses the dot product of vectors B and A."
+            }
+        ]
+    },
+    2: { // Bloom: Apply
+        theme: "The Laboratory",
+        questions: [
+            {
+                question: "A coil with 50 turns experiences a change in magnetic flux of 0.5 Wb in 2 seconds. What is the magnitude of the induced EMF?",
+                options: ["12.5 V", "25 V", "100 V", "0.2 V"],
+                correct: 0,
+                hint: "Use Faraday's Law: ε = N * (ΔΦ/Δt)"
+            },
+            {
+                question: "A 2m long conductor moves at 10 m/s perpendicular to a 0.5 T magnetic field. What is the induced EMF?",
+                options: ["5 V", "10 V", "20 V", "1 V"],
+                correct: 1,
+                hint: "For motional EMF: ε = Bvl"
+            },
+            {
+                question: "If the magnetic field through a loop doubles while the area remains constant, what happens to the flux?",
+                options: ["It halves", "It stays the same", "It doubles", "It quadruples"],
+                correct: 2,
+                hint: "Flux is directly proportional to the magnetic field strength."
+            }
+        ]
+    },
+    3: { // Bloom: Analyze
+        theme: "The Power Plant",
+        questions: [
+            {
+                question: "A bar magnet is dropped north pole first through a horizontal copper ring. As it enters, what is the direction of the induced current viewed from above?",
+                options: ["Clockwise", "Counter-Clockwise", "No current", "Alternating"],
+                correct: 1,
+                hint: "Lenz's law: The ring must create a North pole pointing up to repel the incoming magnet."
+            },
+            {
+                question: "Why do transformers only work with AC and not DC?",
+                options: ["DC voltage is too high", "DC creates a constant magnetic field (no flux change)", "AC is cheaper", "Resistance is higher in DC"],
+                correct: 1,
+                hint: "Induction requires a *changing* magnetic flux."
+            },
+            {
+                question: "In an AC generator, at what position of the coil is the induced EMF zero?",
+                options: ["When flux is zero", "When flux is maximum", "At 45 degrees", "Always constant"],
+                correct: 1,
+                hint: "EMF depends on the rate of change. When flux is max, the slope (rate of change) is momentarily zero."
+            }
+        ]
+    },
+    4: { // Bloom: Evaluate
+        theme: "The High Voltage Vault",
+        questions: [
+            {
+                question: "Two identical loops are moved into a magnetic field. Loop A moves twice as fast as Loop B. Compare the power dissipated if both have equal resistance.",
+                options: ["Power in A is 2x B", "Power in A is 4x B", "Powers are equal", "Power in B is 2x A"],
+                correct: 1,
+                hint: "EMF is proportional to velocity (v), so EMF_A = 2*EMF_B. Power is V²/R."
+            },
+            {
+                question: "Engineers want to reduce eddy current losses in a transformer core. Which method is most effective?",
+                options: ["Using a solid iron core", "Using a laminated soft iron core", "Using a copper core", "Increasing the voltage"],
+                correct: 1,
+                hint: "Lamination breaks the path of circular currents."
+            },
+            {
+                question: "Critique this statement: 'Lenz's Law violates the conservation of energy because it creates a force that opposes motion.'",
+                options: ["True, it violates energy conservation", "False, the opposing force requires work, converting mechanical energy to electrical", "False, it only applies to static fields", "True, but only in vacuum"],
+                correct: 1,
+                hint: "If it aided motion, you would get infinite energy for free."
+            }
+        ]
+    },
+    5: { // Bloom: Create/Synthesis
+        theme: "The Quantum Core",
+        questions: [
+            {
+                question: "You need to design a magnetic brake for a train. Based on eddy currents, which material would be best for the braking fin passing through the magnets?",
+                options: ["Plastic (Insulator)", "Copper (High Conductivity, Non-magnetic)", "Iron (High Permeability)", "Wood"],
+                correct: 1,
+                hint: "You need low resistance to maximize eddy currents, but iron might stick to the magnets due to ferromagnetism."
+            },
+            {
+                question: "Predict the outcome: A magnet falls down a very long copper tube. Describe its motion.",
+                options: ["Accelerates at 9.8 m/s² constantly", "Stops in the middle", "Accelerates briefly, then reaches a constant terminal velocity", "Oscillates up and down"],
+                correct: 2,
+                hint: "Gravity pulls down, magnetic force pushes up. As speed increases, magnetic force increases until forces balance."
+            },
+            {
+                question: "If you were building a self-sustaining flashlight, which mechanism maximizes energy harvest from shaking?",
+                options: ["A weak magnet moving slowly", "A strong magnet moving rapidly through a coil with many turns", "A battery", "A stationary magnet"],
+                correct: 1,
+                hint: "Maximize B, maximize v, maximize N (Faraday's Law)."
+            }
+        ]
+    }
 };
 
 class QuestionManager {
     constructor() {
-        this.currentTopic = 'kinematics';
-        this.currentQuestionIndex = 0;
+        this.currentLevel = 1;
         this.questions = [];
         this.score = 0;
         this.hints = 3;
-    }
-    
-    setTopic(topic) {
-        this.currentTopic = topic;
-        this.questions = [...physicsQuestions[topic]];
-        this.shuffleQuestions();
         this.currentQuestionIndex = 0;
     }
     
-    shuffleQuestions() {
+    loadLevel(level) {
+        this.currentLevel = level;
+        // Deep copy questions to avoid modifying original
+        this.questions = [...emiLevels[level].questions];
+        // Shuffle
         for (let i = this.questions.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [this.questions[i], this.questions[j]] = [this.questions[j], this.questions[i]];
         }
+        this.currentQuestionIndex = 0;
+        // Grant an extra hint per level
+        if(level > 1) this.hints++;
     }
     
+    getTheme() {
+        return emiLevels[this.currentLevel].theme;
+    }
+
     getCurrentQuestion() {
         return this.questions[this.currentQuestionIndex];
     }
@@ -131,7 +151,7 @@ class QuestionManager {
     checkAnswer(answerIndex) {
         const correct = this.questions[this.currentQuestionIndex].correct === answerIndex;
         if (correct) {
-            this.score += 100;
+            this.score += 100 * this.currentLevel; // More points for harder levels
             this.currentQuestionIndex++;
         }
         return correct;
@@ -153,5 +173,6 @@ class QuestionManager {
         this.score = 0;
         this.hints = 3;
         this.currentQuestionIndex = 0;
+        this.currentLevel = 1;
     }
 }
