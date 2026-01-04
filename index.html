@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Escape Room</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/stats.min.js"></script>
+</head>
+<body>
+    <div id="game-container">
+        <div id="hud">
+            <div id="timer">Time: 60:00</div>
+            <div id="score">Score: 0</div>
+            <div id="hints">Hints: 3</div>
+        </div>
+        
+        <div id="question-modal" class="modal">
+            <div class="modal-content">
+                <h2 id="question-title">Physics Question</h2>
+                <p id="question-text"></p>
+                <div id="options-container"></div>
+                <button id="submit-answer">Submit</button>
+                <button id="hint-button">Use Hint</button>
+                <div id="feedback"></div>
+            </div>
+        </div>
+        
+        <div id="start-screen">
+            <h1>Physics Escape Room</h1>
+            <p>Solve physics problems to escape the room!</p>
+            <div class="topic-selection">
+                <h3>Choose Physics Topic:</h3>
+                <select id="topic-select">
+                    <option value="kinematics">Kinematics</option>
+                    <option value="dynamics">Dynamics</option>
+                    <option value="energy">Energy & Work</option>
+                    <option value="electricity">Electricity</option>
+                    <option value="optics">Optics</option>
+                </select>
+            </div>
+            <button id="start-button">Start Game</button>
+            <div class="instructions">
+                <h3>Instructions:</h3>
+                <p>• Click on interactive objects to solve physics problems</p>
+                <p>• Solve all problems to unlock the door</p>
+                <p>• Use hints wisely</p>
+                <p>• Complete before time runs out</p>
+            </div>
+        </div>
+        
+        <div id="end-screen" class="hidden">
+            <h1>Congratulations!</h1>
+            <p id="end-message"></p>
+            <p id="final-score"></p>
+            <button id="restart-button">Play Again</button>
+        </div>
+        
+        <div id="controls">
+            <p>WASD to move | Mouse to look | Click objects to interact</p>
+        </div>
+    </div>
+    
+    <script src="questions.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
