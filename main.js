@@ -160,31 +160,29 @@ function createSideDoor(roomWidth, roomDepth) {
 function createInteractiveObjects(level) {
     const objectConfigs = [];
     
-    // 1. Back Wall Object (Pulsating)
-    // Wall is at Z = -10. 
+    // 1. Back Wall Object
     objectConfigs.push({
         type: 'wall',
         wallSide: 'back',
         x: (Math.random() * 8) - 4,
         y: 0,
-        z: -9.8, // Close to wall
+        z: -9.8, 
         rotY: 0,
         animType: 'pulse'
     });
 
-    // 2. Left Wall Object (Flashing)
-    // Wall is at X = -7.
+    // 2. Left Wall Object
     objectConfigs.push({
         type: 'wall',
         wallSide: 'left',
-        x: -6.8, // Close to wall
+        x: -6.8, 
         y: 0,
         z: (Math.random() * 12) - 6,
-        rotY: Math.PI / 2, // Rotated 90 degrees
+        rotY: Math.PI / 2, 
         animType: 'flash'
     });
 
-    // 3. Three Ground Objects (Rotating)
+    // 3. Three Ground Objects
     const groundPoints = [];
     let attempts = 0;
     while(groundPoints.length < 3 && attempts < 100) {
@@ -220,19 +218,16 @@ function createInteractiveObjects(level) {
         if (config.type === 'wall') {
             const group = new THREE.Group();
             
-            // Mounting Base - CHANGED GEOMETRY
-            // Now Wide (1.5) and Tall (1.5) but Thin (0.3)
-            // This ensures it sits flat parallel to the wall surface
+            // Base geometry (Flat against wall)
             const base = new THREE.Mesh(
                 new THREE.BoxGeometry(1.5, 1.5, 0.3), 
                 new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 })
             );
             group.add(base);
 
-            // Create Interesting Sci-Fi Geometry
+            // Sci-Fi Geometry
             let artMesh;
             if (config.animType === 'pulse') {
-                // "Quantum Resonator"
                 const geo = new THREE.IcosahedronGeometry(0.8, 0);
                 const mat = new THREE.MeshStandardMaterial({ 
                     color: 0x00FFFF, 
@@ -241,15 +236,12 @@ function createInteractiveObjects(level) {
                     wireframe: true
                 });
                 artMesh = new THREE.Mesh(geo, mat);
-                
                 const core = new THREE.Mesh(
                     new THREE.OctahedronGeometry(0.4),
                     new THREE.MeshStandardMaterial({ color: 0xFFFFFF, emissive: 0xFFFFFF })
                 );
                 artMesh.add(core);
-                
             } else {
-                // "Flux Node"
                 const geo = new THREE.TorusKnotGeometry(0.5, 0.15, 64, 8);
                 const mat = new THREE.MeshStandardMaterial({ 
                     color: 0xFF00FF, 
@@ -261,14 +253,9 @@ function createInteractiveObjects(level) {
                 artMesh = new THREE.Mesh(geo, mat);
             }
             
-            // Move art mesh OUT from the base along the Z axis (thickness)
-            // Since the base is 0.3 thick, 0.6 places it nicely in front
             artMesh.position.z = 0.6; 
-            
             group.add(artMesh);
             mesh = group;
-            
-            // Store reference to the part we want to animate
             mesh.userData.animPart = artMesh;
             
         } else {
@@ -291,7 +278,6 @@ function createInteractiveObjects(level) {
                  mesh = new THREE.Mesh(geo, mat);
             }
             
-            // Pedestal
             const ped = new THREE.Mesh(
                 new THREE.CylinderGeometry(1.5, 2, 1, 32),
                 new THREE.MeshStandardMaterial({ color: 0x111111 })
@@ -299,20 +285,18 @@ function createInteractiveObjects(level) {
             ped.position.set(config.x, config.y - 1.2, config.z);
             scene.add(ped);
             
-            mesh = mesh; // Reassign for clarity
-            mesh.userData.animPart = mesh; // Animate the whole object
+            mesh = mesh; 
+            mesh.userData.animPart = mesh;
         }
 
         mesh.position.set(config.x, config.y, config.z);
         mesh.rotation.y = config.rotY;
         
-        // Metadata
         mesh.userData.type = 'interactive';
         mesh.userData.questionIndex = index;
         mesh.userData.animType = config.animType;
         mesh.userData.posType = config.type; 
 
-        // Apply userData to children for raycasting
         mesh.traverse((child) => {
             if (child !== mesh) { 
                 child.userData = { type: 'interactive', parent: mesh };
@@ -326,7 +310,6 @@ function createInteractiveObjects(level) {
 
 function animate() {
     requestAnimationFrame(animate);
-    
     const time = Date.now() * 0.001; 
 
     objects.forEach(obj => {
@@ -335,12 +318,10 @@ function animate() {
             const type = obj.userData.animType;
 
             if (type === 'rotate') {
-                // Ground objects spinning
                 part.rotation.y += 0.02;
                 part.rotation.z += 0.01;
             } 
             else if (type === 'pulse') {
-                // Back Wall: Breathing
                 const scale = 1 + Math.sin(time * 2) * 0.1; 
                 part.scale.set(scale, scale, scale);
                 part.material.emissiveIntensity = 0.5 + Math.sin(time * 3) * 0.4;
@@ -348,7 +329,6 @@ function animate() {
                 part.rotation.y += 0.01;
             } 
             else if (type === 'flash') {
-                // Left Wall: Strobe
                 const flash = Math.sin(time * 15) > 0.5 ? 2.0 : 0.2;
                 part.material.emissiveIntensity = flash;
                 part.rotation.x += 0.02;
@@ -361,7 +341,6 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-// -- Helpers --
 function startGame() {
     if(questionManager) questionManager.reset();
     ['start-screen', 'end-screen'].forEach(id => {
@@ -443,65 +422,48 @@ function showQuestion(object) {
     document.getElementById('hint-button').disabled = questionManager.hints <= 0;
 }
 
+// --- FIXED FUNCTION BELOW ---
 function selectOption(event) {
-    document.querySelectorAll('.option').forEach(btn => btn.style.background = '#3498db');
+    // 1. CLEAR ALL previous selections
+    document.querySelectorAll('.option').forEach(btn => {
+        btn.style.background = '#3498db';
+        delete btn.dataset.selected; // This removes the data attribute
+    });
+
+    // 2. Set the NEW selection
     event.target.style.background = '#2ecc71';
     event.target.dataset.selected = 'true';
 }
 
 function submitAnswer() {
-    // 1. Find the selected button
     const selectedButton = document.querySelector('.option[data-selected="true"]');
-    
-    // 2. If no button selected, do nothing
     if (!selectedButton) return;
     
-    // 3. Check the answer
     const selectedIndex = parseInt(selectedButton.dataset.index);
     const isCorrect = questionManager.checkAnswer(selectedIndex);
     
     const feedbackEl = document.getElementById('feedback');
-    
     if (isCorrect) {
-        // CASE A: CORRECT
         if(feedbackEl) {
             feedbackEl.textContent = 'Correct!';
             feedbackEl.style.color = '#27ae60';
         }
-        
-        // Play a success sound here if you had audio
-        
-        // Wait 1 second, then close modal and check for game progress
         setTimeout(() => {
             document.getElementById('question-modal').style.display = 'none';
-            
-            // --- NEW: Visual feedback for solved object ---
-            // We need to know WHICH object triggered this. 
-            // Since we don't pass the object to submitAnswer, we can just rely on the HUD.
-            // But if you want the object to turn green, we'd need to track the 'currentInteractingObject'.
-            
             updateHUD();
-            
             if (!questionManager.hasMoreQuestions()) {
                 unlockDoor();
             }
         }, 1000);
-        
     } else {
-        // CASE B: INCORRECT
+        // Just show incorrect message, don't close modal, don't break game state
         if(feedbackEl) {
             feedbackEl.textContent = 'Incorrect! Try again.';
             feedbackEl.style.color = '#e74c3c';
         }
-        
-        // IMPORTANT: We do NOT close the modal.
-        // We do NOT increment the question index (handled in questions.js).
-        // The player can simply select a different option and click Submit again.
-        
-        // Optional: Reset the selected button visual state after a moment?
-        // For now, leaving it selected lets them see what they picked.
     }
 }
+
 function showHint() {
     if (questionManager.hints > 0) {
         document.getElementById('feedback').textContent = `Hint: ${questionManager.getHint()}`;
