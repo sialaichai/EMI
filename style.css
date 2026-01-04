@@ -174,3 +174,11 @@ select {
     border-radius: 5px;
     z-index: 100;
 }
+
+#start-screen {
+    z-index: 2000; /* Ensures it is above everything else */
+    cursor: default;
+}
+button {
+    cursor: pointer; /* Ensures the mouse turns to a hand over the button */
+}
