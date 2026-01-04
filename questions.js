@@ -2,7 +2,7 @@
 const emiLevels = {
     1: { // Bloom: Remember/Understand
         theme: "The Classroom",
-        [
+        questions:[
     {
         question: "Which law states that the direction of the induced current is such that it opposes the change in magnetic flux that produced it?",
         options: ["Faraday's Law", "Ampere's Law", "Lenz's Law", "Ohm's Law"],
@@ -127,7 +127,7 @@ const emiLevels = {
     },
     2: { // Bloom: Apply
         theme: "The Laboratory",
-       [
+       questions: [
     {
         question: "A coil with 100 turns experiences a change in magnetic flux from 2 Wb to 10 Wb in 4 seconds. Calculate the induced EMF.",
         options: ["200 V", "2 V", "50 V", "800 V"],
@@ -252,7 +252,7 @@ const emiLevels = {
     },
     3: { // Bloom: Analyze
         theme: "The Power Plant",
-        [
+        questions: [
     {
         question: "A graph shows Magnetic Flux (Φ) increasing linearly with time. Which statement describes the induced EMF?",
         options: ["It increases linearly", "It is constant and non-zero", "It is zero", "It decreases linearly"],
@@ -377,7 +377,7 @@ const emiLevels = {
     },
     4: { // Bloom: Evaluate
         theme: "The High Voltage Vault",
-       [
+       questions: [
     {
         question: "Critique this statement: 'Lenz's Law violates the conservation of energy because it creates a counter-force against motion.'",
         options: ["True. It creates energy from nothing.", "False. The counter-force requires mechanical work, which converts to electrical energy.", "False. It only applies to static magnetic fields.", "True. But it only applies at quantum scales."],
@@ -502,7 +502,7 @@ const emiLevels = {
     },
     5: { // Bloom: Create/Synthesis
         theme: "The Quantum Core",
-       [
+       questions:[
     {
         question: "Design a magnetic braking system for a roller coaster. Which configuration maximizes braking force without mechanical wear?",
         options: ["Steel pads pressing against steel rails", "Copper fins passing between strong permanent magnets", "Rubber pads on plastic rails", "Ceramic pads on aluminum rails"],
