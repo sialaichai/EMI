@@ -474,12 +474,14 @@ function submitAnswer() {
         // Wait 1 second, then close modal and check for game progress
         setTimeout(() => {
             document.getElementById('question-modal').style.display = 'none';
+            
+            // --- NEW: Visual feedback for solved object ---
+            // We need to know WHICH object triggered this. 
+            // Since we don't pass the object to submitAnswer, we can just rely on the HUD.
+            // But if you want the object to turn green, we'd need to track the 'currentInteractingObject'.
+            
             updateHUD();
             
-            // Mark the object as "Solved" so it can't be clicked again (Optional visual change)
-            // You could change the object color to green here if you wanted.
-            
-            // Check if all questions for this room are done
             if (!questionManager.hasMoreQuestions()) {
                 unlockDoor();
             }
