@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Game Level Editor (Hybrid)</title>
+    <title>Game Level Editor (Flexible Copy/Paste)</title>
     
     <script defer src="//unpkg.com/mathlive"></script>
     
@@ -29,39 +29,50 @@
         .form-group { margin-bottom: 25px; }
         label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
         
-        /* Standard Inputs */
         input, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
         textarea { font-family: 'Courier New', monospace; resize: vertical; }
 
-        /* EQUATION BUILDER TOOLBAR */
+        /* --- NEW TOOLBAR STYLES --- */
         .math-toolbar {
-            background: #f1f1f1;
-            padding: 10px;
+            background: #f8f9fa;
+            padding: 15px;
             border: 1px solid #ddd;
-            border-radius: 4px;
-            margin-bottom: 5px;
+            border-radius: 6px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
         math-field {
             width: 100%;
-            padding: 5px;
+            padding: 8px;
             background: white;
             border: 1px solid #ccc;
-            font-size: 18px;
+            border-radius: 4px;
+            font-size: 20px;
             margin-bottom: 10px;
         }
-        .insert-btn {
-            background: #8e44ad; 
-            color: white; 
-            border: none; 
-            padding: 5px 15px; 
-            border-radius: 4px; 
-            cursor: pointer; 
-            font-size: 12px;
-            font-weight: bold;
+        .tool-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
         }
-        .insert-btn:hover { background: #732d91; }
+        .code-display {
+            flex: 1;
+            background: #e9ecef;
+            color: #495057;
+            font-family: monospace;
+            border: 1px solid #ced4da;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        /* Action Buttons */
+        .action-btn { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 5px; }
+        .btn-copy { background: #f39c12; color: white; }
+        .btn-copy:hover { background: #d68910; }
+        .btn-insert { background: #8e44ad; color: white; }
+        .btn-insert:hover { background: #732d91; }
 
-        /* PREVIEW BOX */
+        /* Preview Box */
         .preview-box {
             background: #fff;
             border: 2px dashed #eee;
@@ -72,7 +83,7 @@
             color: #333;
         }
 
-        /* Top Buttons */
+        /* Top Nav */
         .top-bar { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
         .btn { padding: 10px 20px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; transition: 0.2s; }
         .btn:hover { transform: translateY(-1px); opacity: 0.9; }
@@ -88,7 +99,7 @@
 <body>
 
 <div class="top-bar">
-    <h1>Level Editor (Hybrid)</h1>
+    <h1>Level Editor (Copy/Paste Math)</h1>
     <div style="flex:1"></div>
     <div class="tabs">
         <button class="tab active" onclick="loadLevel(1)">Lvl 1</button>
@@ -114,20 +125,30 @@
         <div id="editorForm" style="display:none;">
             
             <div class="form-group">
-                <label>Equation Builder (Optional)</label>
+                <label>Equation Builder Tool</label>
                 <div class="math-toolbar">
-                    <div style="margin-bottom:5px; font-size:12px; color:#666;">
-                        1. Build math here &nbsp;&nbsp; 2. Click "Insert" to add it to Question Text
-                    </div>
                     <math-field id="mathTool" virtual-keyboard-mode="manual"></math-field>
-                    <button class="insert-btn" onclick="insertMath()">⬇ Insert Equation into Text</button>
+                    
+                    <div class="tool-actions">
+                        <input type="text" id="latexBuffer" class="code-display" readonly placeholder="LaTeX code appears here...">
+                        
+                        <button class="action-btn btn-copy" onclick="copyToClipboard()">
+                            📋 Copy for Paste
+                        </button>
+                        
+                        <button class="action-btn btn-insert" onclick="insertMath()">
+                            ⬇ Insert to Text
+                        </button>
+                    </div>
+                </div>
+                <div style="font-size:12px; color:#666; margin-top:5px;">
+                    * <b>Copy</b> puts code like <code>$x^2$</code> on your clipboard. Paste it (Ctrl+V) into Hint, Options, or Question boxes.
                 </div>
             </div>
 
             <div class="form-group">
                 <label>Question Text</label>
-                <textarea id="qText" rows="4" oninput="updateCurrent()" placeholder="Type normal text here. Use the builder above to insert math."></textarea>
-                
+                <textarea id="qText" rows="3" oninput="updateCurrent()" placeholder="Type text here... paste math using Ctrl+V"></textarea>
                 <label style="margin-top:10px; color:#888; font-size:12px;">Live Preview:</label>
                 <div id="previewBox" class="preview-box"></div>
             </div>
@@ -144,7 +165,7 @@
             
             <div class="form-group">
                 <label>Hint</label>
-                <input type="text" id="qHint" oninput="updateCurrent()">
+                <input type="text" id="qHint" oninput="updateCurrent()" placeholder="Paste math here too...">
             </div>
 
             <div style="margin-top:20px; padding-top:20px; border-top:1px solid #eee;">
@@ -163,33 +184,57 @@
     let currentData = [];
     let currentLevel = 1;
     let selectedIndex = -1;
+    
     const mathTool = document.getElementById('mathTool');
+    const latexBuffer = document.getElementById('latexBuffer');
 
-    // INSERT BUTTON LOGIC
+    // SYNC MATH FIELD WITH BUFFER
+    mathTool.addEventListener('input', () => {
+        const raw = mathTool.getValue();
+        // Automatically wrap in $ signs so it is ready for the game
+        if(raw) {
+            latexBuffer.value = `$${raw}$`;
+        } else {
+            latexBuffer.value = "";
+        }
+    });
+
+    // COPY FUNCTION
+    function copyToClipboard() {
+        const code = latexBuffer.value;
+        if(!code) return;
+        
+        navigator.clipboard.writeText(code).then(() => {
+            const btn = document.querySelector('.btn-copy');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "✅ Copied!";
+            setTimeout(() => btn.innerHTML = originalText, 1500);
+        });
+    }
+
+    // INSERT FUNCTION (For main text convenience)
     function insertMath() {
-        const latex = mathTool.getValue();
-        if(!latex) return;
+        const code = latexBuffer.value;
+        if(!code) return;
 
         const textArea = document.getElementById('qText');
-        const startPos = textArea.selectionStart;
-        const endPos = textArea.selectionEnd;
+        const start = textArea.selectionStart;
+        const end = textArea.selectionEnd;
+        const text = textArea.value;
         
-        // Wrap latex in dollar signs for the game to recognize it
-        const textToInsert = ` $${latex}$ `;
+        // Insert with spaces around it
+        const insertStr = ` ${code} `;
         
-        // Insert at cursor position
-        const oldText = textArea.value;
-        const newText = oldText.substring(0, startPos) + textToInsert + oldText.substring(endPos);
+        textArea.value = text.substring(0, start) + insertStr + text.substring(end);
         
-        textArea.value = newText;
-        
-        // Move cursor after insertion
-        const newCursorPos = startPos + textToInsert.length;
-        textArea.setSelectionRange(newCursorPos, newCursorPos);
+        // Move cursor and refocus
+        const newPos = start + insertStr.length;
+        textArea.setSelectionRange(newPos, newPos);
         textArea.focus();
         
-        // Clear the builder
+        // Clear tool
         mathTool.setValue('');
+        latexBuffer.value = '';
         
         updateCurrent();
     }
@@ -225,10 +270,7 @@
         currentData.forEach((q, index) => {
             const div = document.createElement('div');
             div.className = `q-item ${index === selectedIndex ? 'active' : ''}`;
-            
-            // Clean preview for sidebar (remove LaTeX symbols for readability)
             const plainText = q.question.replace(/\$.*?\$/g, '[Eq]');
-            
             div.innerHTML = `${index + 1}. ${plainText.substring(0, 25)}...`;
             div.onclick = () => selectQuestion(index);
             list.appendChild(div);
@@ -246,74 +288,4 @@
 
         if(index === -1) {
             form.style.display = 'none';
-            msg.style.display = 'block';
-            return;
-        }
-
-        form.style.display = 'block';
-        msg.style.display = 'none';
-
-        const q = currentData[index];
-        document.getElementById('qText').value = q.question || "";
-        document.getElementById('qOptions').value = q.options ? q.options.join(', ') : "";
-        document.getElementById('qCorrect').value = q.correctIndex || 0;
-        document.getElementById('qHint').value = q.hint || "";
-        
-        mathTool.setValue(''); // Clear builder
-        updatePreview(q.question);
-    }
-
-    function updateCurrent() {
-        if(selectedIndex === -1) return;
-        
-        const q = currentData[selectedIndex];
-        q.question = document.getElementById('qText').value;
-        q.options = document.getElementById('qOptions').value.split(',').map(s => s.trim());
-        q.correctIndex = parseInt(document.getElementById('qCorrect').value);
-        q.hint = document.getElementById('qHint').value;
-        
-        updatePreview(q.question);
-    }
-
-    function updatePreview(text) {
-        const box = document.getElementById('previewBox');
-        box.innerHTML = text || "<em>Preview will appear here...</em>";
-        if(window.MathJax) {
-            MathJax.typesetPromise([box]).catch(() => {});
-        }
-    }
-
-    function addNewQuestion() {
-        const newQ = {
-            id: Date.now(),
-            question: "Solve for $x$: $x^2 - 9 = 0$",
-            options: ["3", "-3", "3 and -3", "9"],
-            correctIndex: 2,
-            hint: "Factor difference of squares"
-        };
-        currentData.push(newQ);
-        renderList();
-        selectQuestion(currentData.length - 1);
-    }
-
-    function deleteQuestion() {
-        if(selectedIndex > -1 && confirm("Delete this question?")) {
-            currentData.splice(selectedIndex, 1);
-            selectQuestion(-1);
-            renderList();
-        }
-    }
-
-    function downloadJSON() {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentData, null, 2));
-        const anchor = document.createElement('a');
-        anchor.href = dataStr;
-        anchor.download = `level${currentLevel}.json`;
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-    }
-</script>
-
-</body>
-</html>
+            msg.style.display = 'block
