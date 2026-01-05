@@ -507,17 +507,36 @@ function onObjectClick(event) {
 function showQuestion(object) {
     if (!questionManager.hasMoreQuestions()) { unlockDoor(); return; }
     const question = questionManager.getCurrentQuestion();
-    document.getElementById('question-text').textContent = question.question;
+    
+    // 1. Set text (allows HTML/MathJax)
+    const qTextEl = document.getElementById('question-text');
+    qTextEl.innerHTML = question.question; 
+    
+    // 2. Render Math
+    if(window.MathJax) {
+        MathJax.typesetPromise([qTextEl]).catch(err => console.log(err));
+    }
+
+    // ... rest of the function (creating buttons) ...
     const container = document.getElementById('options-container');
     container.innerHTML = '';
     question.options.forEach((opt, i) => {
         const btn = document.createElement('button');
         btn.className = 'option';
-        btn.textContent = opt;
+        
+        // Render Math in buttons too!
+        btn.innerHTML = opt; 
+        
         btn.dataset.index = i;
         btn.addEventListener('click', selectOption);
         container.appendChild(btn);
     });
+    
+    // Render Math in options
+    if(window.MathJax) {
+        MathJax.typesetPromise([container]).catch(err => console.log(err));
+    }
+
     document.getElementById('feedback').textContent = '';
     document.getElementById('question-modal').style.display = 'block';
     document.getElementById('hint-button').disabled = questionManager.hints <= 0;
