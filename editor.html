@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Game Level Editor (Visual Math)</title>
+    <title>Game Level Editor (Hybrid)</title>
     
     <script defer src="//unpkg.com/mathlive"></script>
     
@@ -28,25 +28,51 @@
         
         .form-group { margin-bottom: 25px; }
         label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
-        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        
+        /* Standard Inputs */
+        input, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
+        textarea { font-family: 'Courier New', monospace; resize: vertical; }
 
-        /* VISUAL MATH EDITOR STYLE */
-        math-field {
-            width: 100%;
+        /* EQUATION BUILDER TOOLBAR */
+        .math-toolbar {
+            background: #f1f1f1;
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
-            background: #fafafa;
-            font-size: 18px; 
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 5px;
         }
-        math-field:focus-within {
-            border-color: #3498db;
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        math-field {
+            width: 100%;
+            padding: 5px;
+            background: white;
+            border: 1px solid #ccc;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .insert-btn {
+            background: #8e44ad; 
+            color: white; 
+            border: none; 
+            padding: 5px 15px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .insert-btn:hover { background: #732d91; }
+
+        /* PREVIEW BOX */
+        .preview-box {
+            background: #fff;
+            border: 2px dashed #eee;
+            padding: 15px;
+            margin-top: 5px;
+            min-height: 50px;
+            border-radius: 4px;
+            color: #333;
         }
 
-        /* Buttons */
+        /* Top Buttons */
         .top-bar { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
         .btn { padding: 10px 20px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; transition: 0.2s; }
         .btn:hover { transform: translateY(-1px); opacity: 0.9; }
@@ -57,19 +83,12 @@
         .tabs { display: flex; gap: 5px; }
         .tab { padding: 8px 16px; cursor: pointer; background: #ddd; border: none; border-radius: 4px; font-weight: bold; }
         .tab.active { background: #2c3e50; color: white; }
-        
-        .raw-latex {
-            margin-top: 5px;
-            font-size: 11px;
-            color: #888;
-            font-family: monospace;
-        }
     </style>
 </head>
 <body>
 
 <div class="top-bar">
-    <h1>Level Editor (Visual Math)</h1>
+    <h1>Level Editor (Hybrid)</h1>
     <div style="flex:1"></div>
     <div class="tabs">
         <button class="tab active" onclick="loadLevel(1)">Lvl 1</button>
@@ -95,13 +114,26 @@
         <div id="editorForm" style="display:none;">
             
             <div class="form-group">
-                <label>Question Text (Type here or use Virtual Keyboard)</label>
-                <math-field id="visualEditor" virtual-keyboard-mode="manual"></math-field>
-                <div class="raw-latex">Generated LaTeX: <span id="latexOutput"></span></div>
+                <label>Equation Builder (Optional)</label>
+                <div class="math-toolbar">
+                    <div style="margin-bottom:5px; font-size:12px; color:#666;">
+                        1. Build math here &nbsp;&nbsp; 2. Click "Insert" to add it to Question Text
+                    </div>
+                    <math-field id="mathTool" virtual-keyboard-mode="manual"></math-field>
+                    <button class="insert-btn" onclick="insertMath()">⬇ Insert Equation into Text</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Question Text</label>
+                <textarea id="qText" rows="4" oninput="updateCurrent()" placeholder="Type normal text here. Use the builder above to insert math."></textarea>
+                
+                <label style="margin-top:10px; color:#888; font-size:12px;">Live Preview:</label>
+                <div id="previewBox" class="preview-box"></div>
             </div>
             
             <div class="form-group">
-                <label>Options (Comma separated, can use LaTeX)</label>
+                <label>Options (Comma separated)</label>
                 <input type="text" id="qOptions" oninput="updateCurrent()" placeholder="Option A, Option B...">
             </div>
             
@@ -131,16 +163,38 @@
     let currentData = [];
     let currentLevel = 1;
     let selectedIndex = -1;
-    const mathField = document.getElementById('visualEditor');
+    const mathTool = document.getElementById('mathTool');
 
-    // Setup MathLive Listener
-    mathField.addEventListener('input', (ev) => {
-        // Update the underlying data whenever the user types in the visual editor
-        document.getElementById('latexOutput').textContent = mathField.getValue();
-        updateCurrent(true); 
-    });
+    // INSERT BUTTON LOGIC
+    function insertMath() {
+        const latex = mathTool.getValue();
+        if(!latex) return;
 
-    // Initial Load
+        const textArea = document.getElementById('qText');
+        const startPos = textArea.selectionStart;
+        const endPos = textArea.selectionEnd;
+        
+        // Wrap latex in dollar signs for the game to recognize it
+        const textToInsert = ` $${latex}$ `;
+        
+        // Insert at cursor position
+        const oldText = textArea.value;
+        const newText = oldText.substring(0, startPos) + textToInsert + oldText.substring(endPos);
+        
+        textArea.value = newText;
+        
+        // Move cursor after insertion
+        const newCursorPos = startPos + textToInsert.length;
+        textArea.setSelectionRange(newCursorPos, newCursorPos);
+        textArea.focus();
+        
+        // Clear the builder
+        mathTool.setValue('');
+        
+        updateCurrent();
+    }
+
+    // LOAD LOGIC
     loadLevel(1);
 
     async function loadLevel(level) {
@@ -172,23 +226,17 @@
             const div = document.createElement('div');
             div.className = `q-item ${index === selectedIndex ? 'active' : ''}`;
             
-            // Clean preview for sidebar
-            // Remove pure latex symbols for readability in the small list if possible
-            const plainText = q.question.length > 30 ? q.question.substring(0,30) + "..." : q.question;
+            // Clean preview for sidebar (remove LaTeX symbols for readability)
+            const plainText = q.question.replace(/\$.*?\$/g, '[Eq]');
             
-            div.innerHTML = `${index + 1}. ${plainText}`;
+            div.innerHTML = `${index + 1}. ${plainText.substring(0, 25)}...`;
             div.onclick = () => selectQuestion(index);
             list.appendChild(div);
-            
-            // Render Math in sidebar items
-            if(window.MathJax) MathJax.typesetPromise([div]);
         });
     }
 
     function selectQuestion(index) {
         selectedIndex = index;
-        
-        // Highlight active item without re-rendering whole list (performance)
         document.querySelectorAll('.q-item').forEach((el, i) => {
             el.classList.toggle('active', i === index);
         });
@@ -206,38 +254,42 @@
         msg.style.display = 'none';
 
         const q = currentData[index];
-        
-        // Load data into Visual Editor
-        mathField.setValue(q.question || "");
-        document.getElementById('latexOutput').textContent = q.question || "";
-        
+        document.getElementById('qText').value = q.question || "";
         document.getElementById('qOptions').value = q.options ? q.options.join(', ') : "";
         document.getElementById('qCorrect').value = q.correctIndex || 0;
         document.getElementById('qHint').value = q.hint || "";
+        
+        mathTool.setValue(''); // Clear builder
+        updatePreview(q.question);
     }
 
-    function updateCurrent(fromMathField = false) {
+    function updateCurrent() {
         if(selectedIndex === -1) return;
         
         const q = currentData[selectedIndex];
-        
-        // If update came from typing in MathField, get value from there
-        if (fromMathField) {
-            q.question = mathField.getValue();
-        } 
-        
+        q.question = document.getElementById('qText').value;
         q.options = document.getElementById('qOptions').value.split(',').map(s => s.trim());
         q.correctIndex = parseInt(document.getElementById('qCorrect').value);
         q.hint = document.getElementById('qHint').value;
+        
+        updatePreview(q.question);
+    }
+
+    function updatePreview(text) {
+        const box = document.getElementById('previewBox');
+        box.innerHTML = text || "<em>Preview will appear here...</em>";
+        if(window.MathJax) {
+            MathJax.typesetPromise([box]).catch(() => {});
+        }
     }
 
     function addNewQuestion() {
         const newQ = {
             id: Date.now(),
-            question: "Solve: x^2 = 4",
-            options: ["2", "-2", "+-2", "4"],
+            question: "Solve for $x$: $x^2 - 9 = 0$",
+            options: ["3", "-3", "3 and -3", "9"],
             correctIndex: 2,
-            hint: "Square root"
+            hint: "Factor difference of squares"
         };
         currentData.push(newQ);
         renderList();
@@ -245,7 +297,7 @@
     }
 
     function deleteQuestion() {
-        if(selectedIndex > -1 && confirm("Are you sure?")) {
+        if(selectedIndex > -1 && confirm("Delete this question?")) {
             currentData.splice(selectedIndex, 1);
             selectQuestion(-1);
             renderList();
