@@ -2,20 +2,67 @@
 let scene, camera, renderer, controls;
 let objects = [];
 let questionManager;
+let audioManager; // New Audio Manager
 let gameActive = false;
 let timeRemaining = 3600; 
 let gameTimer;
 let currentLevel = 1;
 const MAX_LEVELS = 5;
 
-// Visual Themes - UPDATED: Vibrant, Cheerful, Saturated Colors
+// Visual Themes
 const ROOM_THEMES = {
-    1: { wall: 0x27ae60, floor: 0x2ecc71, light: 0xFFFFFF }, // Emerald Green (Growth/Classic Chalkboard)
-    2: { wall: 0x2980b9, floor: 0x3498db, light: 0xFFEB3B }, // Ocean Blue (Calm Lab)
-    3: { wall: 0xd35400, floor: 0xe67e22, light: 0xFF9800 }, // Burnt Orange (Warm Energy)
-    4: { wall: 0x8e44ad, floor: 0x9b59b6, light: 0x00E5FF }, // Royal Purple (Creative/High Tech)
-    5: { wall: 0x16a085, floor: 0x1abc9c, light: 0xD500F9 }  // Teal/Turquoise (Quantum/Futuristic)
+    1: { wall: 0x27ae60, floor: 0x2ecc71, light: 0xFFFFFF }, // Emerald Green
+    2: { wall: 0x2980b9, floor: 0x3498db, light: 0xFFEB3B }, // Ocean Blue
+    3: { wall: 0xd35400, floor: 0xe67e22, light: 0xFF9800 }, // Burnt Orange
+    4: { wall: 0x8e44ad, floor: 0x9b59b6, light: 0x00E5FF }, // Royal Purple
+    5: { wall: 0x16a085, floor: 0x1abc9c, light: 0xD500F9 }  // Teal
 };
+
+// --- AUDIO MANAGER CLASS ---
+class AudioManager {
+    constructor() {
+        // Define Audio Objects
+        this.bgm = new Audio('assets/bgm.mp3');
+        this.applause = new Audio('assets/applause.mp3');
+        this.fail = new Audio('assets/fail.mp3');
+        this.success = new Audio('assets/success.mp3');
+
+        // Settings
+        this.bgm.loop = true;
+        this.bgm.volume = 0.4; // Background music slightly lower
+        this.applause.volume = 0.8;
+        this.fail.volume = 0.8;
+        this.success.volume = 1.0;
+    }
+
+    playBGM() {
+        // Only play if not already playing to avoid overlapping
+        if (this.bgm.paused) {
+            this.bgm.play().catch(e => console.log("Audio autoplay blocked until interaction"));
+        }
+    }
+
+    stopBGM() {
+        this.bgm.pause();
+        // Optional: Reset time to 0 if you want it to restart every time
+        // this.bgm.currentTime = 0; 
+    }
+
+    playApplause() {
+        this.applause.currentTime = 0; // Rewind to start
+        this.applause.play();
+    }
+
+    playFail() {
+        this.fail.currentTime = 0;
+        this.fail.play();
+    }
+
+    playSuccess() {
+        this.success.currentTime = 0;
+        this.success.play();
+    }
+}
 
 function init() {
     scene = new THREE.Scene();
@@ -44,6 +91,9 @@ function init() {
         console.error("QuestionManager not loaded. Check questions.js");
     }
 
+    // Initialize Audio Manager
+    audioManager = new AudioManager();
+
     setupEventListeners();
     
     animate();
@@ -65,7 +115,6 @@ function loadLevel(level) {
 
     const theme = ROOM_THEMES[level];
     
-    // Increased Ambient Light for brighter room
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
     
@@ -85,40 +134,32 @@ function loadLevel(level) {
     }
 }
 
-// --- ORGANIC TEXTURE GENERATOR ---
+// --- TEXTURE GENERATOR ---
 function createScienceTexture(baseColorHex, type) {
     const canvas = document.createElement('canvas');
     canvas.width = 1024;
     canvas.height = 1024;
     const ctx = canvas.getContext('2d');
-
     const baseColor = new THREE.Color(baseColorHex);
     
-    // 1. Solid Vibrant Background
     ctx.fillStyle = '#' + baseColor.getHexString();
     ctx.fillRect(0, 0, 1024, 1024);
     
-    // 2. Subtle Noise (Reduced opacity to keep colors bright)
     for(let i=0; i<4000; i++) {
         const x = Math.random() * 1024;
         const y = Math.random() * 1024;
         const size = Math.random() * 3 + 1;
-        // Very low opacity to avoid "muddy/grey" look
         const opacity = Math.random() * 0.03; 
-        
-        ctx.fillStyle = Math.random() > 0.5 ? 
-            `rgba(255,255,255,${opacity})` : 
-            `rgba(0,0,0,${opacity})`;
+        ctx.fillStyle = Math.random() > 0.5 ? `rgba(255,255,255,${opacity})` : `rgba(0,0,0,${opacity})`;
         ctx.fillRect(x, y, size, size);
     }
 
-    // 3. Soft Erasure marks (Subtle)
     for(let i=0; i<15; i++) {
         const x = Math.random() * 1024;
         const y = Math.random() * 1024;
         const rad = Math.random() * 100 + 50;
         const grd = ctx.createRadialGradient(x, y, 0, x, y, rad);
-        grd.addColorStop(0, `rgba(255,255,255,0.05)`); // Very subtle white
+        grd.addColorStop(0, `rgba(255,255,255,0.05)`);
         grd.addColorStop(1, `rgba(255,255,255,0)`);
         ctx.fillStyle = grd;
         ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI*2); ctx.fill();
@@ -136,8 +177,6 @@ function createScienceTexture(baseColorHex, type) {
     ctx.textBaseline = 'middle';
 
     if (type === 'wall') {
-        
-        // A. Background "Chalk" Layer (Faint)
         ctx.fillStyle = 'rgba(255, 255, 255, 0.1)'; 
         for(let i=0; i<10; i++) {
             const x = Math.random() * 1024;
@@ -149,13 +188,9 @@ function createScienceTexture(baseColorHex, type) {
             ctx.fillText(equations[Math.floor(Math.random() * equations.length)], 0, 0);
             ctx.restore();
         }
-
-        // B. Foreground "Fresh" Layer (Bright White)
         ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; 
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
         ctx.lineWidth = 3;
-
-        // Draw Equations
         for(let i=0; i<6; i++) {
             const x = Math.random() * 800 + 112; 
             const y = Math.random() * 800 + 112;
@@ -166,15 +201,11 @@ function createScienceTexture(baseColorHex, type) {
             ctx.fillText(equations[Math.floor(Math.random() * equations.length)], 0, 0);
             ctx.restore();
         }
-
-        // Draw Diagrams (Organic Scribbles)
         for(let i=0; i<4; i++) {
             const cx = Math.random() * 900 + 50;
             const cy = Math.random() * 900 + 50;
-            
             ctx.beginPath();
             if (Math.random() > 0.5) {
-                // Solenoid / Coil
                 let startX = cx - 50;
                 ctx.moveTo(startX, cy);
                 for(let j=0; j<8; j++) {
@@ -182,26 +213,21 @@ function createScienceTexture(baseColorHex, type) {
                     ctx.bezierCurveTo(startX, cy-25, startX+6, cy+25, startX+12, cy);
                 }
             } else {
-                // Flux Field
                 ctx.arc(cx, cy, 40, 0, Math.PI*2);
                 ctx.moveTo(cx-50, cy); ctx.lineTo(cx+50, cy);
                 ctx.moveTo(cx, cy-50); ctx.lineTo(cx, cy+50);
             }
             ctx.stroke();
         }
-
     } else {
-        // FLOOR - Technical Grid (Cleaner look)
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        for(let i=0; i<=1024; i+=128) { // Wider grid
+        for(let i=0; i<=1024; i+=128) { 
             ctx.moveTo(i, 0); ctx.lineTo(i, 1024);
             ctx.moveTo(0, i); ctx.lineTo(1024, i);
         }
         ctx.stroke();
-
-        // Magnetic Field Markers
         ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
         ctx.font = '40px Arial';
         for(let x=64; x<1024; x+=256) {
@@ -228,20 +254,14 @@ function createRoom(theme) {
     const roomDepth = 20; 
     const roomHeight = 10;
     
-    // GENERATE UNIQUE TEXTURES FOR EVERY SURFACE
     const floorTexture = createScienceTexture(theme.floor, 'floor');
-    
     const backWallTex = createScienceTexture(theme.wall, 'wall');
     const leftWallTex = createScienceTexture(theme.wall, 'wall');
     const rightWallTex = createScienceTexture(theme.wall, 'wall');
 
     const createWall = (w, h, d, map, x, y, z, rotY = 0) => {
         const geo = new THREE.BoxGeometry(w, h, d);
-        const mat = new THREE.MeshStandardMaterial({ 
-            map: map, 
-            roughness: 0.5, // Reduced roughness for brighter reflection
-            metalness: 0.1 
-        });
+        const mat = new THREE.MeshStandardMaterial({ map: map, roughness: 0.5, metalness: 0.1 });
         const mesh = new THREE.Mesh(geo, mat);
         mesh.position.set(x, y, z);
         mesh.rotation.y = rotY;
@@ -251,32 +271,24 @@ function createRoom(theme) {
         return mesh;
     };
 
-    // Floor
     const floorGeo = new THREE.PlaneGeometry(roomWidth, roomDepth);
-    const floorMat = new THREE.MeshStandardMaterial({ 
-        map: floorTexture, 
-        roughness: 0.4,
-        metalness: 0.1
-    });
+    const floorMat = new THREE.MeshStandardMaterial({ map: floorTexture, roughness: 0.4, metalness: 0.1 });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -roomHeight/2 + 0.1;
     floor.receiveShadow = true;
     scene.add(floor);
 
-    // Ceiling
     const ceilingGeo = new THREE.PlaneGeometry(roomWidth, roomDepth);
-    const ceilingMat = new THREE.MeshStandardMaterial({ color: 0xDDDDDD }); // Lighter ceiling
+    const ceilingMat = new THREE.MeshStandardMaterial({ color: 0xDDDDDD });
     const ceiling = new THREE.Mesh(ceilingGeo, ceilingMat);
     ceiling.rotation.x = Math.PI / 2;
     ceiling.position.y = roomHeight/2;
     scene.add(ceiling);
 
-    // Walls
     createWall(roomWidth, roomHeight, 0.5, backWallTex, 0, 0, -roomDepth/2); 
     createWall(roomDepth, roomHeight, 0.5, leftWallTex, -roomWidth/2, 0, 0, Math.PI/2); 
     createWall(roomDepth, roomHeight, 0.5, rightWallTex, roomWidth/2, 0, 0, Math.PI/2); 
-
     createSideDoor(roomWidth, roomDepth);
 }
 
@@ -284,18 +296,14 @@ function createSideDoor(roomWidth, roomDepth) {
     const doorW = 4;
     const doorH = 6;
     const doorZ = -5;
-    
     const doorGeometry = new THREE.BoxGeometry(doorW, doorH, 0.2);
     const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.4 });
     const door = new THREE.Mesh(doorGeometry, doorMaterial);
-    
     door.position.set(roomWidth/2 - 0.2, -2, doorZ); 
     door.rotation.y = Math.PI / 2;
-    
     door.userData = { type: 'door', locked: true };
     scene.add(door);
     objects.push(door);
-    
     const frameGeo = new THREE.BoxGeometry(doorW + 0.5, doorH + 0.5, 0.3);
     const frameMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
     const frame = new THREE.Mesh(frameGeo, frameMat);
@@ -307,38 +315,14 @@ function createSideDoor(roomWidth, roomDepth) {
 
 function createInteractiveObjects(level) {
     const objectConfigs = [];
-    
-    // 1. Back Wall Object
-    objectConfigs.push({
-        type: 'wall',
-        wallSide: 'back',
-        x: (Math.random() * 8) - 4,
-        y: 0,
-        z: -9.8, 
-        rotY: 0,
-        animType: 'pulse'
-    });
+    objectConfigs.push({ type: 'wall', wallSide: 'back', x: (Math.random() * 8) - 4, y: 0, z: -9.8, rotY: 0, animType: 'pulse' });
+    objectConfigs.push({ type: 'wall', wallSide: 'left', x: -6.8, y: 0, z: (Math.random() * 12) - 6, rotY: Math.PI / 2, animType: 'flash' });
 
-    // 2. Left Wall Object
-    objectConfigs.push({
-        type: 'wall',
-        wallSide: 'left',
-        x: -6.8, 
-        y: 0,
-        z: (Math.random() * 12) - 6,
-        rotY: Math.PI / 2, 
-        animType: 'flash'
-    });
-
-    // 3. Three Ground Objects
     const groundPoints = [];
     let attempts = 0;
     while(groundPoints.length < 3 && attempts < 100) {
         attempts++;
-        const candidate = {
-            x: (Math.random() * 10) - 5, 
-            z: (Math.random() * 14) - 7 
-        };
+        const candidate = { x: (Math.random() * 10) - 5, z: (Math.random() * 14) - 7 };
         let tooClose = false;
         for(let p of groundPoints) {
             const dx = p.x - candidate.x;
@@ -347,109 +331,54 @@ function createInteractiveObjects(level) {
         }
         if(!tooClose) groundPoints.push(candidate);
     }
-
     groundPoints.forEach(p => {
-        objectConfigs.push({
-            type: 'floor',
-            x: p.x,
-            y: -3.5,
-            z: p.z,
-            rotY: Math.random() * Math.PI,
-            animType: 'rotate'
-        });
+        objectConfigs.push({ type: 'floor', x: p.x, y: -3.5, z: p.z, rotY: Math.random() * Math.PI, animType: 'rotate' });
     });
 
     objectConfigs.forEach((config, index) => {
         let mesh;
-        
         if (config.type === 'wall') {
             const group = new THREE.Group();
-            
-            // Base geometry
-            const base = new THREE.Mesh(
-                new THREE.BoxGeometry(1.5, 1.5, 0.3), 
-                new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 })
-            );
+            const base = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 0.3), new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 }));
             group.add(base);
-
-            // Sci-Fi Geometry
             let artMesh;
             if (config.animType === 'pulse') {
                 const geo = new THREE.IcosahedronGeometry(0.8, 0);
-                const mat = new THREE.MeshStandardMaterial({ 
-                    color: 0x00FFFF, 
-                    emissive: 0x0088AA,
-                    emissiveIntensity: 0.8,
-                    wireframe: true
-                });
+                const mat = new THREE.MeshStandardMaterial({ color: 0x00FFFF, emissive: 0x0088AA, emissiveIntensity: 0.8, wireframe: true });
                 artMesh = new THREE.Mesh(geo, mat);
-                const core = new THREE.Mesh(
-                    new THREE.OctahedronGeometry(0.4),
-                    new THREE.MeshStandardMaterial({ color: 0xFFFFFF, emissive: 0xFFFFFF })
-                );
+                const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.4), new THREE.MeshStandardMaterial({ color: 0xFFFFFF, emissive: 0xFFFFFF }));
                 artMesh.add(core);
             } else {
                 const geo = new THREE.TorusKnotGeometry(0.5, 0.15, 64, 8);
-                const mat = new THREE.MeshStandardMaterial({ 
-                    color: 0xFF00FF, 
-                    emissive: 0x550055,
-                    emissiveIntensity: 0.5,
-                    roughness: 0.2,
-                    metalness: 0.8
-                });
+                const mat = new THREE.MeshStandardMaterial({ color: 0xFF00FF, emissive: 0x550055, emissiveIntensity: 0.5, roughness: 0.2, metalness: 0.8 });
                 artMesh = new THREE.Mesh(geo, mat);
             }
-            
             artMesh.position.z = 0.6; 
             group.add(artMesh);
             mesh = group;
             mesh.userData.animPart = artMesh;
-            
         } else {
-            // Floor Object
             if (level % 2 !== 0) { 
                  const geo = new THREE.IcosahedronGeometry(1.2, 0);
-                 const mat = new THREE.MeshStandardMaterial({ 
-                     color: 0xff0000, 
-                     wireframe: true, 
-                     emissive: 0x550000 
-                 });
+                 const mat = new THREE.MeshStandardMaterial({ color: 0xff0000, wireframe: true, emissive: 0x550000 });
                  mesh = new THREE.Mesh(geo, mat);
             } else { 
                  const geo = new THREE.TorusKnotGeometry(0.8, 0.25, 100, 16);
-                 const mat = new THREE.MeshStandardMaterial({ 
-                     color: 0x00ff00, 
-                     metalness: 0.8, 
-                     roughness: 0.1 
-                 });
+                 const mat = new THREE.MeshStandardMaterial({ color: 0x00ff00, metalness: 0.8, roughness: 0.1 });
                  mesh = new THREE.Mesh(geo, mat);
             }
-            
-            const ped = new THREE.Mesh(
-                new THREE.CylinderGeometry(1.5, 2, 1, 32),
-                new THREE.MeshStandardMaterial({ color: 0x111111 })
-            );
+            const ped = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2, 1, 32), new THREE.MeshStandardMaterial({ color: 0x111111 }));
             ped.position.set(config.x, config.y - 1.2, config.z);
             scene.add(ped);
-            
-            mesh = mesh; 
             mesh.userData.animPart = mesh;
         }
-
         mesh.position.set(config.x, config.y, config.z);
         mesh.rotation.y = config.rotY;
-        
         mesh.userData.type = 'interactive';
         mesh.userData.questionIndex = index;
         mesh.userData.animType = config.animType;
         mesh.userData.posType = config.type; 
-
-        mesh.traverse((child) => {
-            if (child !== mesh) { 
-                child.userData = { type: 'interactive', parent: mesh };
-            }
-        });
-
+        mesh.traverse((child) => { if (child !== mesh) child.userData = { type: 'interactive', parent: mesh }; });
         scene.add(mesh);
         objects.push(mesh);
     });
@@ -458,24 +387,20 @@ function createInteractiveObjects(level) {
 function animate() {
     requestAnimationFrame(animate);
     const time = Date.now() * 0.001; 
-
     objects.forEach(obj => {
         if (obj.userData.type === 'interactive' && obj.userData.animPart) {
             const part = obj.userData.animPart;
             const type = obj.userData.animType;
-
             if (type === 'rotate') {
                 part.rotation.y += 0.02;
                 part.rotation.z += 0.01;
-            } 
-            else if (type === 'pulse') {
+            } else if (type === 'pulse') {
                 const scale = 1 + Math.sin(time * 2) * 0.1; 
                 part.scale.set(scale, scale, scale);
                 part.material.emissiveIntensity = 0.5 + Math.sin(time * 3) * 0.4;
                 part.rotation.z = Math.sin(time) * 0.2;
                 part.rotation.y += 0.01;
-            } 
-            else if (type === 'flash') {
+            } else if (type === 'flash') {
                 const flash = Math.sin(time * 15) > 0.5 ? 2.0 : 0.2;
                 part.material.emissiveIntensity = flash;
                 part.rotation.x += 0.02;
@@ -483,7 +408,6 @@ function animate() {
             }
         }
     });
-    
     controls.update();
     renderer.render(scene, camera);
 }
@@ -495,6 +419,12 @@ function startGame() {
         if(el) el.classList.add('hidden');
     });
     document.getElementById('question-modal').style.display = 'none';
+    
+    // --- AUDIO START ---
+    // Start the BGM when the user clicks Start
+    if(audioManager) audioManager.playBGM();
+    // -------------------
+
     gameActive = true;
     timeRemaining = 3600;
     updateTimerDisplay();
@@ -542,6 +472,12 @@ function onObjectClick(event) {
         if (!target.userData.type && target.parent && target.parent.userData.type) target = target.parent;
 
         if (target.userData.type === 'interactive') {
+            
+            // --- AUDIO STOP ---
+            // Stop BGM when looking at a question
+            if(audioManager) audioManager.stopBGM();
+            // ------------------
+
             showQuestion(target);
         } else if (target.userData.type === 'door') {
             if (target.userData.locked) alert('Door Locked! Solve all questions in this sector.');
@@ -591,18 +527,44 @@ function submitAnswer() {
             feedbackEl.textContent = 'Correct!';
             feedbackEl.style.color = '#27ae60';
         }
+        
+        // --- AUDIO APPLAUSE ---
+        if(audioManager) audioManager.playApplause();
+        // ----------------------
+
         setTimeout(() => {
             document.getElementById('question-modal').style.display = 'none';
             updateHUD();
+            
             if (!questionManager.hasMoreQuestions()) {
                 unlockDoor();
+                
+                // --- AUDIO SUCCESS ---
+                // We do NOT resume BGM here. We play success sound.
+                if(audioManager) {
+                    audioManager.stopBGM(); 
+                    audioManager.playSuccess();
+                }
+                // ---------------------
+
+            } else {
+                // --- AUDIO RESUME ---
+                // Resume BGM if there are still questions left
+                if(audioManager) audioManager.playBGM();
+                // --------------------
             }
+
         }, 1000);
     } else {
         if(feedbackEl) {
             feedbackEl.textContent = 'Incorrect! -20 Points. Try again.';
             feedbackEl.style.color = '#e74c3c';
         }
+
+        // --- AUDIO FAIL ---
+        if(audioManager) audioManager.playFail();
+        // ----------------
+        
         updateHUD();
     }
 }
@@ -638,6 +600,9 @@ function endGame(escaped) {
     document.getElementById('end-message').style.color = escaped ? '#27ae60' : '#e74c3c';
     document.getElementById('final-score').textContent = `Final Score: ${questionManager.score}`;
     document.getElementById('end-screen').classList.remove('hidden');
+    
+    // Stop BGM at end
+    if(audioManager) audioManager.stopBGM();
 }
 
 function restartGame() { startGame(); }
