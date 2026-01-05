@@ -1,0 +1,17 @@
+// Inside main.js
+
+async function loadLevel(level) { // <--- Note the 'async' keyword
+    currentLevel = level;
+    
+    // ... (existing scene cleanup code) ...
+
+    // WAIT for questions to load before setting up HUD
+    if (questionManager) {
+        await questionManager.loadLevelData(level); // <--- Wait here
+        updateHUD();
+        const levelDisplay = document.getElementById('level-display');
+        if(levelDisplay) levelDisplay.textContent = `Level: ${level} - ${questionManager.getTheme()}`;
+    }
+    
+    // ... (rest of room creation code) ...
+}
