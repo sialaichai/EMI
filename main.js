@@ -464,9 +464,25 @@ function updateHUD() {
 
 function onObjectClick(event) {
     if (!gameActive) return;
+
+    // --- MOBILE SUPPORT ADDITION ---
+    // Prevent default behavior to stop double-firing on some devices
+    if(event.type === 'touchstart') event.preventDefault();
+    
     const mouse = new THREE.Vector2();
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    // Check if it is a Touch event (Mobile) or Mouse event (Desktop)
+    if (event.changedTouches && event.changedTouches.length > 0) {
+        // Mobile: Use the first finger's position
+        mouse.x = (event.changedTouches[0].clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.changedTouches[0].clientY / window.innerHeight) * 2 + 1;
+    } else {
+        // Desktop: Use mouse position
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    }
+    //mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    //mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, camera);
     const intersects = raycaster.intersectObjects(objects, true);
@@ -596,10 +612,19 @@ function onWindowResize() {
 }
 
 function setupEventListeners() {
+    // UI Buttons
     const ids = ['start-button', 'restart-button', 'submit-answer', 'hint-button'];
     const funcs = [startGame, restartGame, submitAnswer, showHint];
-    ids.forEach((id, i) => { const el = document.getElementById(id); if(el) el.addEventListener('click', funcs[i]); });
+    ids.forEach((id, i) => { 
+        const el = document.getElementById(id); 
+        if(el) el.addEventListener('click', funcs[i]); 
+    });
+
+    // 3D Interactions
+    // Desktop Click
     renderer.domElement.addEventListener('click', onObjectClick, false);
+    // Mobile Tap (passive: false allows us to use preventDefault if needed)
+    renderer.domElement.addEventListener('touchstart', onObjectClick, { passive: false });
 }
 
 window.onload = init;
