@@ -175,6 +175,13 @@ select {
     z-index: 100;
     pointer-events: none;
 }
+/* 2. HIDE "SHIFT" INSTRUCTION ON MOBILE */
+@media (max-width: 768px) {
+    #interaction-label {
+        display: none !important; /* Phones don't have Shift keys */
+    }
+}
+
 
 #start-screen {
     z-index: 2000; /* Ensures it is above everything else */
