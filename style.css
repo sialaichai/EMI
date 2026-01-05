@@ -167,7 +167,7 @@ select {
     position: absolute;
     bottom: 10px;
     left: 20px;
-    transform: none;
+    transform: translate(-50%);
     font-family: 'Courier New', monospace;
     color: rgba(255, 255, 255, 0.7);
     font-size: 14px;
