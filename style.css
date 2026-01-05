@@ -235,3 +235,23 @@ button {
 .points.minus {
     color: #e74c3c; /* Red */
 }
+
+/* style.css */
+
+/* 1. Fix the Start Button issue */
+#start-screen, #end-screen, #question-modal {
+    z-index: 100 !important; /* Forces menus to sit ON TOP of the 3D canvas */
+}
+
+/* 2. Fix Mobile Scrolling */
+canvas {
+    display: block;
+    touch-action: none; /* Disables browser scrolling/zooming on the game area */
+}
+
+/* 3. Make buttons easier to tap on phones */
+button {
+    cursor: pointer;
+    min-width: 44px; /* Minimum tap target size */
+    min-height: 44px;
+}
