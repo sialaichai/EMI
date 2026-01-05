@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Game Level Editor</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
+        .container { display: flex; gap: 20px; }
+        .sidebar { width: 250px; background: white; padding: 10px; height: 90vh; overflow-y: auto; border: 1px solid #ccc; }
+        .main { flex: 1; background: white; padding: 20px; border: 1px solid #ccc; }
+        
+        .q-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
+        .q-item:hover { background: #e0e0e0; }
+        .q-item.active { background: #3498db; color: white; }
+        
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, textarea, select { width: 100%; padding: 8px; box-sizing: border-box; }
+        
+        .btn { padding: 10px 20px; cursor: pointer; background: #333; color: white; border: none; }
+        .btn-green { background: #27ae60; }
+        .btn-red { background: #c0392b; }
+        
+        .tabs { margin-bottom: 20px; }
+        .tab { padding: 10px 20px; cursor: pointer; background: #ddd; border: none; }
+        .tab.active { background: #333; color: white; }
+    </style>
+</head>
+<body>
+
+<h1>Level Editor</h1>
+
+<div class="tabs" id="levelTabs">
+    <button class="tab active" onclick="loadLevel(1)">Level 1</button>
+    <button class="tab" onclick="loadLevel(2)">Level 2</button>
+    <button class="tab" onclick="loadLevel(3)">Level 3</button>
+    <button class="tab" onclick="loadLevel(4)">Level 4</button>
+    <button class="tab" onclick="loadLevel(5)">Level 5</button>
+</div>
+
+<div style="margin-bottom: 15px;">
+    <button class="btn btn-green" onclick="downloadJSON()">Download JSON (Save)</button>
+    <button class="btn" onclick="addNewQuestion()">+ New Question</button>
+</div>
+
+<div class="container">
+    <div class="sidebar" id="questionList">
+        </div>
+    
+    <div class="main">
+        <div id="editorForm" style="display:none;">
+            <div class="form-group">
+                <label>Question Text</label>
+                <textarea id="qText" rows="3" oninput="updateCurrent()"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Options (Comma separated)</label>
+                <input type="text" id="qOptions" oninput="updateCurrent()" placeholder="Option A, Option B, Option C, Option D">
+            </div>
+            
+            <div class="form-group">
+                <label>Correct Index (0-3)</label>
+                <input type="number" id="qCorrect" min="0" max="3" oninput="updateCurrent()">
+            </div>
+            
+            <div class="form-group">
+                <label>Hint</label>
+                <input type="text" id="qHint" oninput="updateCurrent()">
+            </div>
+
+            <button class="btn btn-red" onclick="deleteQuestion()">Delete Question</button>
+        </div>
+        <div id="emptyMsg">Select a question to edit or create a new one.</div>
+    </div>
+</div>
+
+<script>
+    let currentData = [];
+    let currentLevel = 1;
+    let selectedIndex = -1;
+
+    // Load initial level
+    loadLevel(1);
+
+    async function loadLevel(level) {
+        currentLevel = level;
+        
+        // Update Tabs UI
+        document.querySelectorAll('.tab').forEach((t, i) => {
+            t.classList.toggle('active', i + 1 === level);
+        });
+
+        try {
+            const res = await fetch(`data/level${level}.json?t=${Date.now()}`);
+            if(res.ok) {
+                currentData = await res.json();
+            } else {
+                currentData = []; // New file
+            }
+        } catch(e) {
+            console.warn("Could not load file, starting empty.", e);
+            currentData = [];
+        }
+
+        renderList();
+        selectQuestion(-1);
+    }
+
+    function renderList() {
+        const list = document.getElementById('questionList');
+        list.innerHTML = '';
+        currentData.forEach((q, index) => {
+            const div = document.createElement('div');
+            div.className = `q-item ${index === selectedIndex ? 'active' : ''}`;
+            div.textContent = `${index + 1}. ${q.question.substring(0, 30)}...`;
+            div.onclick = () => selectQuestion(index);
+            list.appendChild(div);
+        });
+    }
+
+    function selectQuestion(index) {
+        selectedIndex = index;
+        renderList();
+        
+        const form = document.getElementById('editorForm');
+        const msg = document.getElementById('emptyMsg');
+
+        if(index === -1) {
+            form.style.display = 'none';
+            msg.style.display = 'block';
+            return;
+        }
+
+        form.style.display = 'block';
+        msg.style.display = 'none';
+
+        const q = currentData[index];
+        document.getElementById('qText').value = q.question || "";
+        document.getElementById('qOptions').value = q.options ? q.options.join(', ') : "";
+        document.getElementById('qCorrect').value = q.correctIndex || 0;
+        document.getElementById('qHint').value = q.hint || "";
+    }
+
+    function updateCurrent() {
+        if(selectedIndex === -1) return;
+        
+        const q = currentData[selectedIndex];
+        q.question = document.getElementById('qText').value;
+        q.options = document.getElementById('qOptions').value.split(',').map(s => s.trim());
+        q.correctIndex = parseInt(document.getElementById('qCorrect').value);
+        q.hint = document.getElementById('qHint').value;
+        
+        // Update list title in real time
+        const listItems = document.querySelectorAll('.q-item');
+        if(listItems[selectedIndex]) {
+            listItems[selectedIndex].textContent = `${selectedIndex + 1}. ${q.question.substring(0, 30)}...`;
+        }
+    }
+
+    function addNewQuestion() {
+        const newQ = {
+            id: Date.now(), // Simple unique ID
+            question: "New Question",
+            options: ["A", "B", "C", "D"],
+            correctIndex: 0,
+            hint: "Hint here"
+        };
+        currentData.push(newQ);
+        renderList();
+        selectQuestion(currentData.length - 1);
+    }
+
+    function deleteQuestion() {
+        if(selectedIndex > -1) {
+            currentData.splice(selectedIndex, 1);
+            selectQuestion(-1);
+            renderList();
+        }
+    }
+
+    function downloadJSON() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentData, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", `level${currentLevel}.json`);
+        document.body.appendChild(downloadAnchorNode); // Required for firefox
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    }
+</script>
+
+</body>
+</html>
