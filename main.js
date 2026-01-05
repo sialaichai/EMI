@@ -37,7 +37,7 @@ class AudioManager {
 
         // Sound Effects
         this.applause = new Audio('assets/applause.mp3');
-        this.fail = new Audio('assets/fail.mp3');
+        this.fail = new Audio('assets/failure.mp3');
         this.success = new Audio('assets/success.mp3');
 
         this.applause.volume = 0.8;
