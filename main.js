@@ -9,35 +9,30 @@ let gameTimer;
 let currentLevel = 1;
 const MAX_LEVELS = 5;
 
-// Visual Themes
+// Visual Themes - Added 'ceiling' colors (Light Pastels)
 const ROOM_THEMES = {
-    1: { wall: 0x27ae60, floor: 0x2ecc71, light: 0xFFFFFF }, 
-    2: { wall: 0x2980b9, floor: 0x3498db, light: 0xFFEB3B }, 
-    3: { wall: 0xd35400, floor: 0xe67e22, light: 0xFF9800 }, 
-    4: { wall: 0x8e44ad, floor: 0x9b59b6, light: 0x00E5FF }, 
-    5: { wall: 0x16a085, floor: 0x1abc9c, light: 0xD500F9 } 
+    1: { wall: 0x27ae60, floor: 0x2ecc71, ceiling: 0xE8F5E9, light: 0xFFFFFF }, // Green -> Pale Green Ceiling
+    2: { wall: 0x2980b9, floor: 0x3498db, ceiling: 0xE3F2FD, light: 0xFFEB3B }, // Blue -> Pale Blue Ceiling
+    3: { wall: 0xd35400, floor: 0xe67e22, ceiling: 0xFFF3E0, light: 0xFF9800 }, // Orange -> Pale Orange Ceiling
+    4: { wall: 0x8e44ad, floor: 0x9b59b6, ceiling: 0xF3E5F5, light: 0x00E5FF }, // Purple -> Pale Purple Ceiling
+    5: { wall: 0x16a085, floor: 0x1abc9c, ceiling: 0xE0F2F1, light: 0xD500F9 }  // Teal -> Pale Teal Ceiling
 };
 
 // --- AUDIO MANAGER CLASS ---
 class AudioManager {
     constructor() {
-        // 1. Define your playlist here
         this.bgmTracks = [
             'assets/bgm1.mp3',
             'assets/bgm2.mp3',
-            'assets/bgm3.mp3',
-            'assets/bgm4.mp3',
-            'assets/bgm5.mp3'
+            'assets/bgm3.mp3' 
         ];
 
-        // The BGM player container
         this.bgm = new Audio();
         this.bgm.loop = true;
         this.bgm.volume = 0.4; 
 
-        // Sound Effects
         this.applause = new Audio('assets/applause.mp3');
-        this.fail = new Audio('assets/failure.mp3');
+        this.fail = new Audio('assets/fail.mp3');
         this.success = new Audio('assets/success.mp3');
 
         this.applause.volume = 0.8;
@@ -45,18 +40,14 @@ class AudioManager {
         this.success.volume = 1.0;
     }
 
-    // Pick a new random track and start playing
     playRandomBGM() {
-        const randomIndex = Math.floor(Math.random() * this.bgmTracks.length);
-        const selectedTrack = this.bgmTracks[randomIndex];
-        
-        console.log("Playing Track:", selectedTrack); // Debugging info
-        
-        this.bgm.src = selectedTrack;
-        this.bgm.play().catch(e => console.log("Audio autoplay blocked until interaction"));
+        if(this.bgmTracks.length > 0) {
+            const randomIndex = Math.floor(Math.random() * this.bgmTracks.length);
+            this.bgm.src = this.bgmTracks[randomIndex];
+            this.bgm.play().catch(e => console.log("Audio autoplay blocked"));
+        }
     }
 
-    // Resume the CURRENT track (don't pick a new one)
     resumeBGM() {
         if (this.bgm.src && this.bgm.paused) {
             this.bgm.play().catch(e => console.log("Audio resume blocked"));
@@ -152,17 +143,19 @@ function loadLevel(level) {
     }
 }
 
-// --- TEXTURE GENERATOR ---
-function createScienceTexture(baseColorHex, type) {
+// --- TEXTURE GENERATOR (UPDATED FOR CEILINGS) ---
+function createScienceTexture(baseColorHex, type, isLightBackground = false) {
     const canvas = document.createElement('canvas');
     canvas.width = 1024;
     canvas.height = 1024;
     const ctx = canvas.getContext('2d');
     const baseColor = new THREE.Color(baseColorHex);
     
+    // 1. Background
     ctx.fillStyle = '#' + baseColor.getHexString();
     ctx.fillRect(0, 0, 1024, 1024);
     
+    // 2. Noise (Subtle)
     for(let i=0; i<4000; i++) {
         const x = Math.random() * 1024;
         const y = Math.random() * 1024;
@@ -170,17 +163,6 @@ function createScienceTexture(baseColorHex, type) {
         const opacity = Math.random() * 0.03; 
         ctx.fillStyle = Math.random() > 0.5 ? `rgba(255,255,255,${opacity})` : `rgba(0,0,0,${opacity})`;
         ctx.fillRect(x, y, size, size);
-    }
-
-    for(let i=0; i<15; i++) {
-        const x = Math.random() * 1024;
-        const y = Math.random() * 1024;
-        const rad = Math.random() * 100 + 50;
-        const grd = ctx.createRadialGradient(x, y, 0, x, y, rad);
-        grd.addColorStop(0, `rgba(255,255,255,0.05)`);
-        grd.addColorStop(1, `rgba(255,255,255,0)`);
-        ctx.fillStyle = grd;
-        ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI*2); ctx.fill();
     }
 
     const equations = [
@@ -194,8 +176,14 @@ function createScienceTexture(baseColorHex, type) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
+    // Determine Ink Color based on Background Brightness
+    // If background is light (Ceiling), use dark ink. If dark (Wall), use white ink.
+    const inkColorMain = isLightBackground ? 'rgba(40, 60, 80, 0.6)' : 'rgba(255, 255, 255, 0.6)';
+    const inkColorFaint = isLightBackground ? 'rgba(40, 60, 80, 0.1)' : 'rgba(255, 255, 255, 0.1)';
+
     if (type === 'wall') {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)'; 
+        // Faint Background Layer
+        ctx.fillStyle = inkColorFaint; 
         for(let i=0; i<10; i++) {
             const x = Math.random() * 1024;
             const y = Math.random() * 1024;
@@ -206,9 +194,12 @@ function createScienceTexture(baseColorHex, type) {
             ctx.fillText(equations[Math.floor(Math.random() * equations.length)], 0, 0);
             ctx.restore();
         }
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; 
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        
+        // Fresh Foreground Layer
+        ctx.fillStyle = inkColorMain; 
+        ctx.strokeStyle = inkColorMain;
         ctx.lineWidth = 3;
+        
         for(let i=0; i<6; i++) {
             const x = Math.random() * 800 + 112; 
             const y = Math.random() * 800 + 112;
@@ -219,6 +210,8 @@ function createScienceTexture(baseColorHex, type) {
             ctx.fillText(equations[Math.floor(Math.random() * equations.length)], 0, 0);
             ctx.restore();
         }
+        
+        // Diagrams
         for(let i=0; i<4; i++) {
             const cx = Math.random() * 900 + 50;
             const cy = Math.random() * 900 + 50;
@@ -238,6 +231,7 @@ function createScienceTexture(baseColorHex, type) {
             ctx.stroke();
         }
     } else {
+        // FLOOR
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -272,10 +266,14 @@ function createRoom(theme) {
     const roomDepth = 20; 
     const roomHeight = 10;
     
+    // Generate Textures
     const floorTexture = createScienceTexture(theme.floor, 'floor');
-    const backWallTex = createScienceTexture(theme.wall, 'wall');
-    const leftWallTex = createScienceTexture(theme.wall, 'wall');
-    const rightWallTex = createScienceTexture(theme.wall, 'wall');
+    // Dark walls = White Text
+    const backWallTex = createScienceTexture(theme.wall, 'wall', false);
+    const leftWallTex = createScienceTexture(theme.wall, 'wall', false);
+    const rightWallTex = createScienceTexture(theme.wall, 'wall', false);
+    // Light ceiling = Dark Text
+    const ceilingTex = createScienceTexture(theme.ceiling, 'wall', true);
 
     const createWall = (w, h, d, map, x, y, z, rotY = 0) => {
         const geo = new THREE.BoxGeometry(w, h, d);
@@ -297,8 +295,13 @@ function createRoom(theme) {
     floor.receiveShadow = true;
     scene.add(floor);
 
+    // CEILING - Now Textured!
     const ceilingGeo = new THREE.PlaneGeometry(roomWidth, roomDepth);
-    const ceilingMat = new THREE.MeshStandardMaterial({ color: 0xDDDDDD });
+    const ceilingMat = new THREE.MeshStandardMaterial({ 
+        map: ceilingTex, // Use the new generated texture
+        roughness: 0.9, 
+        metalness: 0.0 
+    });
     const ceiling = new THREE.Mesh(ceilingGeo, ceilingMat);
     ceiling.rotation.x = Math.PI / 2;
     ceiling.position.y = roomHeight/2;
@@ -437,11 +440,7 @@ function startGame() {
         if(el) el.classList.add('hidden');
     });
     document.getElementById('question-modal').style.display = 'none';
-    
-    // --- AUDIO START ---
-    if(audioManager) audioManager.playRandomBGM(); // Randomized BGM Start
-    // -------------------
-
+    if(audioManager) audioManager.playRandomBGM(); 
     gameActive = true;
     timeRemaining = 3600;
     updateTimerDisplay();
@@ -489,11 +488,7 @@ function onObjectClick(event) {
         if (!target.userData.type && target.parent && target.parent.userData.type) target = target.parent;
 
         if (target.userData.type === 'interactive') {
-            
-            // --- AUDIO STOP ---
             if(audioManager) audioManager.stopBGM();
-            // ------------------
-
             showQuestion(target);
         } else if (target.userData.type === 'door') {
             if (target.userData.locked) alert('Door Locked! Solve all questions in this sector.');
@@ -543,42 +538,26 @@ function submitAnswer() {
             feedbackEl.textContent = 'Correct!';
             feedbackEl.style.color = '#27ae60';
         }
-        
-        // --- AUDIO APPLAUSE ---
         if(audioManager) audioManager.playApplause();
-        // ----------------------
-
         setTimeout(() => {
             document.getElementById('question-modal').style.display = 'none';
             updateHUD();
-            
             if (!questionManager.hasMoreQuestions()) {
                 unlockDoor();
-                
-                // --- AUDIO SUCCESS ---
                 if(audioManager) {
                     audioManager.stopBGM(); 
                     audioManager.playSuccess();
                 }
-                // ---------------------
-
             } else {
-                // --- AUDIO RESUME ---
-                if(audioManager) audioManager.resumeBGM(); // Resume current track
-                // --------------------
+                if(audioManager) audioManager.resumeBGM();
             }
-
         }, 1000);
     } else {
         if(feedbackEl) {
             feedbackEl.textContent = 'Incorrect! -20 Points. Try again.';
             feedbackEl.style.color = '#e74c3c';
         }
-
-        // --- AUDIO FAIL ---
         if(audioManager) audioManager.playFail();
-        // ----------------
-        
         updateHUD();
     }
 }
@@ -614,8 +593,6 @@ function endGame(escaped) {
     document.getElementById('end-message').style.color = escaped ? '#27ae60' : '#e74c3c';
     document.getElementById('final-score').textContent = `Final Score: ${questionManager.score}`;
     document.getElementById('end-screen').classList.remove('hidden');
-    
-    // Stop BGM at end
     if(audioManager) audioManager.stopBGM();
 }
 
