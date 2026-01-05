@@ -2,7 +2,7 @@
 let scene, camera, renderer, controls;
 let objects = [];
 let questionManager;
-let audioManager; // New Audio Manager
+let audioManager; 
 let gameActive = false;
 let timeRemaining = 3600; 
 let gameTimer;
@@ -11,45 +11,64 @@ const MAX_LEVELS = 5;
 
 // Visual Themes
 const ROOM_THEMES = {
-    1: { wall: 0x27ae60, floor: 0x2ecc71, light: 0xFFFFFF }, // Emerald Green
-    2: { wall: 0x2980b9, floor: 0x3498db, light: 0xFFEB3B }, // Ocean Blue
-    3: { wall: 0xd35400, floor: 0xe67e22, light: 0xFF9800 }, // Burnt Orange
-    4: { wall: 0x8e44ad, floor: 0x9b59b6, light: 0x00E5FF }, // Royal Purple
-    5: { wall: 0x16a085, floor: 0x1abc9c, light: 0xD500F9 }  // Teal
+    1: { wall: 0x27ae60, floor: 0x2ecc71, light: 0xFFFFFF }, 
+    2: { wall: 0x2980b9, floor: 0x3498db, light: 0xFFEB3B }, 
+    3: { wall: 0xd35400, floor: 0xe67e22, light: 0xFF9800 }, 
+    4: { wall: 0x8e44ad, floor: 0x9b59b6, light: 0x00E5FF }, 
+    5: { wall: 0x16a085, floor: 0x1abc9c, light: 0xD500F9 } 
 };
 
 // --- AUDIO MANAGER CLASS ---
 class AudioManager {
     constructor() {
-        // Define Audio Objects
-        this.bgm = new Audio('assets/bgm.mp3');
+        // 1. Define your playlist here
+        this.bgmTracks = [
+            'assets/bgm1.mp3',
+            'assets/bgm2.mp3',
+            'assets/bgm3.mp3',
+            'assets/bgm4.mp3',
+            'assets/bgm5.mp3'
+        ];
+
+        // The BGM player container
+        this.bgm = new Audio();
+        this.bgm.loop = true;
+        this.bgm.volume = 0.4; 
+
+        // Sound Effects
         this.applause = new Audio('assets/applause.mp3');
         this.fail = new Audio('assets/fail.mp3');
         this.success = new Audio('assets/success.mp3');
 
-        // Settings
-        this.bgm.loop = true;
-        this.bgm.volume = 0.4; // Background music slightly lower
         this.applause.volume = 0.8;
         this.fail.volume = 0.8;
         this.success.volume = 1.0;
     }
 
-    playBGM() {
-        // Only play if not already playing to avoid overlapping
-        if (this.bgm.paused) {
-            this.bgm.play().catch(e => console.log("Audio autoplay blocked until interaction"));
+    // Pick a new random track and start playing
+    playRandomBGM() {
+        const randomIndex = Math.floor(Math.random() * this.bgmTracks.length);
+        const selectedTrack = this.bgmTracks[randomIndex];
+        
+        console.log("Playing Track:", selectedTrack); // Debugging info
+        
+        this.bgm.src = selectedTrack;
+        this.bgm.play().catch(e => console.log("Audio autoplay blocked until interaction"));
+    }
+
+    // Resume the CURRENT track (don't pick a new one)
+    resumeBGM() {
+        if (this.bgm.src && this.bgm.paused) {
+            this.bgm.play().catch(e => console.log("Audio resume blocked"));
         }
     }
 
     stopBGM() {
         this.bgm.pause();
-        // Optional: Reset time to 0 if you want it to restart every time
-        // this.bgm.currentTime = 0; 
     }
 
     playApplause() {
-        this.applause.currentTime = 0; // Rewind to start
+        this.applause.currentTime = 0; 
         this.applause.play();
     }
 
@@ -91,7 +110,6 @@ function init() {
         console.error("QuestionManager not loaded. Check questions.js");
     }
 
-    // Initialize Audio Manager
     audioManager = new AudioManager();
 
     setupEventListeners();
@@ -421,8 +439,7 @@ function startGame() {
     document.getElementById('question-modal').style.display = 'none';
     
     // --- AUDIO START ---
-    // Start the BGM when the user clicks Start
-    if(audioManager) audioManager.playBGM();
+    if(audioManager) audioManager.playRandomBGM(); // Randomized BGM Start
     // -------------------
 
     gameActive = true;
@@ -474,7 +491,6 @@ function onObjectClick(event) {
         if (target.userData.type === 'interactive') {
             
             // --- AUDIO STOP ---
-            // Stop BGM when looking at a question
             if(audioManager) audioManager.stopBGM();
             // ------------------
 
@@ -540,7 +556,6 @@ function submitAnswer() {
                 unlockDoor();
                 
                 // --- AUDIO SUCCESS ---
-                // We do NOT resume BGM here. We play success sound.
                 if(audioManager) {
                     audioManager.stopBGM(); 
                     audioManager.playSuccess();
@@ -549,8 +564,7 @@ function submitAnswer() {
 
             } else {
                 // --- AUDIO RESUME ---
-                // Resume BGM if there are still questions left
-                if(audioManager) audioManager.playBGM();
+                if(audioManager) audioManager.resumeBGM(); // Resume current track
                 // --------------------
             }
 
