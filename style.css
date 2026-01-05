@@ -166,13 +166,15 @@ select {
 #controls {
     position: absolute;
     bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    color: white;
-    background: rgba(0, 0, 0, 0.5);
+    left: 20px;
+    transform: none;
+    font-family: 'Courier New', monospace;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
     padding: 10px 20px;
     border-radius: 5px;
     z-index: 100;
+    pointer-events: none;
 }
 
 #start-screen {
