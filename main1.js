@@ -9,13 +9,13 @@ let gameTimer;
 let currentLevel = 1;
 const MAX_LEVELS = 5;
 
-// Visual Themes - Added 'ceiling' colors (Light Pastels)
+// Visual Themes
 const ROOM_THEMES = {
-    1: { wall: 0x27ae60, floor: 0x2ecc71, ceiling: 0xE8F5E9, light: 0xFFFFFF }, // Green -> Pale Green Ceiling
-    2: { wall: 0x2980b9, floor: 0x3498db, ceiling: 0xE3F2FD, light: 0xFFEB3B }, // Blue -> Pale Blue Ceiling
-    3: { wall: 0xd35400, floor: 0xe67e22, ceiling: 0xFFF3E0, light: 0xFF9800 }, // Orange -> Pale Orange Ceiling
-    4: { wall: 0x8e44ad, floor: 0x9b59b6, ceiling: 0xF3E5F5, light: 0x00E5FF }, // Purple -> Pale Purple Ceiling
-    5: { wall: 0x16a085, floor: 0x1abc9c, ceiling: 0xE0F2F1, light: 0xD500F9 }  // Teal -> Pale Teal Ceiling
+    1: { wall: 0x27ae60, floor: 0x2ecc71, ceiling: 0xE8F5E9, light: 0xFFFFFF }, 
+    2: { wall: 0x2980b9, floor: 0x3498db, ceiling: 0xE3F2FD, light: 0xFFEB3B }, 
+    3: { wall: 0xd35400, floor: 0xe67e22, ceiling: 0xFFF3E0, light: 0xFF9800 }, 
+    4: { wall: 0x8e44ad, floor: 0x9b59b6, ceiling: 0xF3E5F5, light: 0x00E5FF }, 
+    5: { wall: 0x16a085, floor: 0x1abc9c, ceiling: 0xE0F2F1, light: 0xD500F9 } 
 };
 
 // --- AUDIO MANAGER CLASS ---
@@ -78,7 +78,10 @@ function init() {
     scene = new THREE.Scene();
     
     camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 8, 20); 
+    
+    // --- UPDATED CAMERA POSITION ---
+    // Lowered Y to -2 (closer to ground) and Z to 14 (closer to room)
+    camera.position.set(0, -2, 14); 
     
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -92,8 +95,12 @@ function init() {
     controls.dampingFactor = 0.05;
     controls.minDistance = 5;
     controls.maxDistance = 30;
-    controls.maxPolarAngle = Math.PI / 2 - 0.1;
-    controls.target.set(0, 0, 0); 
+    
+    // --- UPDATED CONTROLS ---
+    // Target is now at eye-level (y=-2) instead of center (y=0)
+    controls.target.set(0, -2, 0); 
+    // Allow camera to go slightly lower (just above horizontal)
+    controls.maxPolarAngle = Math.PI / 2 + 0.2; 
     
     if (typeof QuestionManager !== 'undefined') {
         questionManager = new QuestionManager();
@@ -143,7 +150,7 @@ function loadLevel(level) {
     }
 }
 
-// --- TEXTURE GENERATOR (UPDATED FOR CEILINGS) ---
+// --- TEXTURE GENERATOR ---
 function createScienceTexture(baseColorHex, type, isLightBackground = false) {
     const canvas = document.createElement('canvas');
     canvas.width = 1024;
@@ -151,11 +158,9 @@ function createScienceTexture(baseColorHex, type, isLightBackground = false) {
     const ctx = canvas.getContext('2d');
     const baseColor = new THREE.Color(baseColorHex);
     
-    // 1. Background
     ctx.fillStyle = '#' + baseColor.getHexString();
     ctx.fillRect(0, 0, 1024, 1024);
     
-    // 2. Noise (Subtle)
     for(let i=0; i<4000; i++) {
         const x = Math.random() * 1024;
         const y = Math.random() * 1024;
@@ -176,13 +181,10 @@ function createScienceTexture(baseColorHex, type, isLightBackground = false) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // Determine Ink Color based on Background Brightness
-    // If background is light (Ceiling), use dark ink. If dark (Wall), use white ink.
     const inkColorMain = isLightBackground ? 'rgba(40, 60, 80, 0.6)' : 'rgba(255, 255, 255, 0.6)';
     const inkColorFaint = isLightBackground ? 'rgba(40, 60, 80, 0.1)' : 'rgba(255, 255, 255, 0.1)';
 
     if (type === 'wall') {
-        // Faint Background Layer
         ctx.fillStyle = inkColorFaint; 
         for(let i=0; i<10; i++) {
             const x = Math.random() * 1024;
@@ -195,7 +197,6 @@ function createScienceTexture(baseColorHex, type, isLightBackground = false) {
             ctx.restore();
         }
         
-        // Fresh Foreground Layer
         ctx.fillStyle = inkColorMain; 
         ctx.strokeStyle = inkColorMain;
         ctx.lineWidth = 3;
@@ -211,7 +212,6 @@ function createScienceTexture(baseColorHex, type, isLightBackground = false) {
             ctx.restore();
         }
         
-        // Diagrams
         for(let i=0; i<4; i++) {
             const cx = Math.random() * 900 + 50;
             const cy = Math.random() * 900 + 50;
@@ -231,7 +231,6 @@ function createScienceTexture(baseColorHex, type, isLightBackground = false) {
             ctx.stroke();
         }
     } else {
-        // FLOOR
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -266,13 +265,10 @@ function createRoom(theme) {
     const roomDepth = 20; 
     const roomHeight = 10;
     
-    // Generate Textures
     const floorTexture = createScienceTexture(theme.floor, 'floor');
-    // Dark walls = White Text
     const backWallTex = createScienceTexture(theme.wall, 'wall', false);
     const leftWallTex = createScienceTexture(theme.wall, 'wall', false);
     const rightWallTex = createScienceTexture(theme.wall, 'wall', false);
-    // Light ceiling = Dark Text
     const ceilingTex = createScienceTexture(theme.ceiling, 'wall', true);
 
     const createWall = (w, h, d, map, x, y, z, rotY = 0) => {
@@ -295,13 +291,8 @@ function createRoom(theme) {
     floor.receiveShadow = true;
     scene.add(floor);
 
-    // CEILING - Now Textured!
     const ceilingGeo = new THREE.PlaneGeometry(roomWidth, roomDepth);
-    const ceilingMat = new THREE.MeshStandardMaterial({ 
-        map: ceilingTex, // Use the new generated texture
-        roughness: 0.9, 
-        metalness: 0.0 
-    });
+    const ceilingMat = new THREE.MeshStandardMaterial({ map: ceilingTex, roughness: 0.9, metalness: 0.0 });
     const ceiling = new THREE.Mesh(ceilingGeo, ceilingMat);
     ceiling.rotation.x = Math.PI / 2;
     ceiling.position.y = roomHeight/2;
