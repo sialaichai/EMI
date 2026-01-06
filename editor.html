@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Game Level Editor (Flexible Copy/Paste)</title>
+    <title>Game Level Editor (Robust)</title>
     
     <script defer src="//unpkg.com/mathlive"></script>
     
@@ -12,8 +12,8 @@
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #eef2f3; }
-        .container { display: flex; gap: 20px; height: 85vh; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #eef2f3; height: 100vh; overflow: hidden; box-sizing: border-box; }
+        .container { display: flex; gap: 20px; height: calc(100% - 120px); }
         
         /* Sidebar */
         .sidebar { width: 300px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; }
@@ -32,7 +32,7 @@
         input, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
         textarea { font-family: 'Courier New', monospace; resize: vertical; }
 
-        /* --- NEW TOOLBAR STYLES --- */
+        /* EQUATION BUILDER */
         .math-toolbar {
             background: #f8f9fa;
             padding: 15px;
@@ -48,12 +48,9 @@
             border-radius: 4px;
             font-size: 20px;
             margin-bottom: 10px;
+            display: block;
         }
-        .tool-actions {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
+        .tool-actions { display: flex; gap: 10px; align-items: center; }
         .code-display {
             flex: 1;
             background: #e9ecef;
@@ -65,12 +62,9 @@
             font-size: 12px;
         }
         
-        /* Action Buttons */
-        .action-btn { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 5px; }
+        .action-btn { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; }
         .btn-copy { background: #f39c12; color: white; }
-        .btn-copy:hover { background: #d68910; }
         .btn-insert { background: #8e44ad; color: white; }
-        .btn-insert:hover { background: #732d91; }
 
         /* Preview Box */
         .preview-box {
@@ -85,8 +79,7 @@
 
         /* Top Nav */
         .top-bar { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
-        .btn { padding: 10px 20px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; transition: 0.2s; }
-        .btn:hover { transform: translateY(-1px); opacity: 0.9; }
+        .btn { padding: 10px 20px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; }
         .btn-green { background: #27ae60; color: white; }
         .btn-blue { background: #3498db; color: white; }
         .btn-red { background: #e74c3c; color: white; }
@@ -94,12 +87,25 @@
         .tabs { display: flex; gap: 5px; }
         .tab { padding: 8px 16px; cursor: pointer; background: #ddd; border: none; border-radius: 4px; font-weight: bold; }
         .tab.active { background: #2c3e50; color: white; }
+
+        /* Error Banner */
+        #error-banner {
+            display: none;
+            background: #e74c3c;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
 
+<div id="error-banner"></div>
+
 <div class="top-bar">
-    <h1>Level Editor (Copy/Paste Math)</h1>
+    <h1>Level Editor</h1>
     <div style="flex:1"></div>
     <div class="tabs">
         <button class="tab active" onclick="loadLevel(1)">Lvl 1</button>
@@ -123,49 +129,38 @@
     
     <div class="main">
         <div id="editorForm" style="display:none;">
-            
             <div class="form-group">
                 <label>Equation Builder Tool</label>
                 <div class="math-toolbar">
                     <math-field id="mathTool" virtual-keyboard-mode="manual"></math-field>
-                    
                     <div class="tool-actions">
-                        <input type="text" id="latexBuffer" class="code-display" readonly placeholder="LaTeX code appears here...">
-                        
-                        <button class="action-btn btn-copy" onclick="copyToClipboard()">
-                            📋 Copy for Paste
-                        </button>
-                        
-                        <button class="action-btn btn-insert" onclick="insertMath()">
-                            ⬇ Insert to Text
-                        </button>
+                        <input type="text" id="latexBuffer" class="code-display" readonly placeholder="Code appears here...">
+                        <button class="action-btn btn-copy" onclick="copyToClipboard()">📋 Copy</button>
+                        <button class="action-btn btn-insert" onclick="insertMath()">⬇ Insert</button>
                     </div>
-                </div>
-                <div style="font-size:12px; color:#666; margin-top:5px;">
-                    * <b>Copy</b> puts code like <code>$x^2$</code> on your clipboard. Paste it (Ctrl+V) into Hint, Options, or Question boxes.
                 </div>
             </div>
 
             <div class="form-group">
                 <label>Question Text</label>
-                <textarea id="qText" rows="3" oninput="updateCurrent()" placeholder="Type text here... paste math using Ctrl+V"></textarea>
+                <textarea id="qText" rows="3" oninput="updateCurrent()" placeholder="Type here... Paste math using Ctrl+V"></textarea>
                 <label style="margin-top:10px; color:#888; font-size:12px;">Live Preview:</label>
                 <div id="previewBox" class="preview-box"></div>
             </div>
             
             <div class="form-group">
                 <label>Options (Comma separated)</label>
-                <input type="text" id="qOptions" oninput="updateCurrent()" placeholder="Option A, Option B...">
+                <input type="text" id="qOptions" oninput="updateCurrent()">
             </div>
             
             <div class="form-group">
-                <label>Correct Answer Index (0-3)</label>
+                <label>Correct Index (0-3)</label>
                 <input type="number" id="qCorrect" min="0" max="3" oninput="updateCurrent()">
             </div>
             
             <div class="form-group">
                 <label>Hint</label>
-                <input type="text" id="qHint" oninput="updateCurrent()" placeholder="Paste math here too...">
+                <input type="text" id="qHint" oninput="updateCurrent()">
             </div>
 
             <div style="margin-top:20px; padding-top:20px; border-top:1px solid #eee;">
@@ -175,7 +170,7 @@
         
         <div id="emptyMsg" style="text-align:center; color:#888; margin-top:50px;">
             <h3>No Question Selected</h3>
-            <p>Select a question from the left or create a new one.</p>
+            <p>Select a question or click "+ New Question" to start.</p>
         </div>
     </div>
 </div>
@@ -188,58 +183,46 @@
     const mathTool = document.getElementById('mathTool');
     const latexBuffer = document.getElementById('latexBuffer');
 
-    // SYNC MATH FIELD WITH BUFFER
+    // CHECK PROTOCOL
+    if (window.location.protocol === 'file:') {
+        const banner = document.getElementById('error-banner');
+        banner.style.display = 'block';
+        banner.innerHTML = "⚠️ <b>Warning:</b> You are opening this file directly. Browser security blocks loading files. Please open this using a Local Server (VS Code Live Server).";
+    }
+
+    // MATH FIELD LISTENER
     mathTool.addEventListener('input', () => {
-        const raw = mathTool.getValue();
-        // Automatically wrap in $ signs so it is ready for the game
-        if(raw) {
-            latexBuffer.value = `$${raw}$`;
-        } else {
-            latexBuffer.value = "";
-        }
+        // Use .value which is standard for newer MathLive
+        const raw = mathTool.value; 
+        latexBuffer.value = raw ? `$${raw}$` : "";
     });
 
-    // COPY FUNCTION
     function copyToClipboard() {
         const code = latexBuffer.value;
         if(!code) return;
-        
         navigator.clipboard.writeText(code).then(() => {
-            const btn = document.querySelector('.btn-copy');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = "✅ Copied!";
-            setTimeout(() => btn.innerHTML = originalText, 1500);
+            alert("Copied: " + code);
         });
     }
 
-    // INSERT FUNCTION (For main text convenience)
     function insertMath() {
         const code = latexBuffer.value;
         if(!code) return;
-
         const textArea = document.getElementById('qText');
         const start = textArea.selectionStart;
         const end = textArea.selectionEnd;
         const text = textArea.value;
-        
-        // Insert with spaces around it
         const insertStr = ` ${code} `;
-        
         textArea.value = text.substring(0, start) + insertStr + text.substring(end);
-        
-        // Move cursor and refocus
         const newPos = start + insertStr.length;
         textArea.setSelectionRange(newPos, newPos);
         textArea.focus();
-        
-        // Clear tool
-        mathTool.setValue('');
+        mathTool.value = ''; // Reset
         latexBuffer.value = '';
-        
         updateCurrent();
     }
 
-    // LOAD LOGIC
+    // --- LOAD LOGIC ---
     loadLevel(1);
 
     async function loadLevel(level) {
@@ -253,15 +236,30 @@
             if(res.ok) {
                 currentData = await res.json();
             } else {
-                currentData = [];
+                console.warn("File not found, initializing defaults.");
+                useDefaultData();
             }
         } catch(e) {
-            console.warn("Load failed, starting empty.");
-            currentData = [];
+            console.warn("Fetch error (CORS?), initializing defaults.", e);
+            useDefaultData();
         }
 
         renderList();
-        selectQuestion(-1);
+        // If data exists, select the first one. If not, deselect.
+        selectQuestion(currentData.length > 0 ? 0 : -1);
+    }
+
+    function useDefaultData() {
+        // Fallback data so the editor isn't blank
+        currentData = [
+            {
+                id: 1,
+                question: "Example Question: Solve $x^2 = 4$",
+                options: ["1", "2", "3", "4"],
+                correctIndex: 1,
+                hint: "Use square root"
+            }
+        ];
     }
 
     function renderList() {
@@ -270,8 +268,12 @@
         currentData.forEach((q, index) => {
             const div = document.createElement('div');
             div.className = `q-item ${index === selectedIndex ? 'active' : ''}`;
-            const plainText = q.question.replace(/\$.*?\$/g, '[Eq]');
-            div.innerHTML = `${index + 1}. ${plainText.substring(0, 25)}...`;
+            
+            let displayQ = q.question || "New Question";
+            // Strip Latex for sidebar
+            displayQ = displayQ.replace(/\$.*?\$/g, '[Eq]');
+            
+            div.innerHTML = `${index + 1}. ${displayQ.substring(0, 25)}...`;
             div.onclick = () => selectQuestion(index);
             list.appendChild(div);
         });
@@ -286,6 +288,79 @@
         const form = document.getElementById('editorForm');
         const msg = document.getElementById('emptyMsg');
 
-        if(index === -1) {
+        if(index === -1 || !currentData[index]) {
             form.style.display = 'none';
-            msg.style.display = 'block
+            msg.style.display = 'block';
+            return;
+        }
+
+        form.style.display = 'block';
+        msg.style.display = 'none';
+
+        const q = currentData[index];
+        document.getElementById('qText').value = q.question || "";
+        document.getElementById('qOptions').value = q.options ? q.options.join(', ') : "";
+        document.getElementById('qCorrect').value = q.correctIndex !== undefined ? q.correctIndex : 0;
+        document.getElementById('qHint').value = q.hint || "";
+        
+        mathTool.value = '';
+        latexBuffer.value = '';
+        updatePreview(q.question);
+    }
+
+    function updateCurrent() {
+        if(selectedIndex === -1) return;
+        const q = currentData[selectedIndex];
+        q.question = document.getElementById('qText').value;
+        q.options = document.getElementById('qOptions').value.split(',').map(s => s.trim());
+        q.correctIndex = parseInt(document.getElementById('qCorrect').value);
+        q.hint = document.getElementById('qHint').value;
+        updatePreview(q.question);
+    }
+
+    function updatePreview(text) {
+        const box = document.getElementById('previewBox');
+        box.innerHTML = text || "<em>Preview...</em>";
+        if(window.MathJax) {
+            MathJax.typesetPromise([box]).catch(() => {});
+        }
+    }
+
+    function addNewQuestion() {
+        const newQ = {
+            id: Date.now(),
+            question: "New Question",
+            options: ["A", "B", "C", "D"],
+            correctIndex: 0,
+            hint: ""
+        };
+        currentData.push(newQ);
+        renderList();
+        selectQuestion(currentData.length - 1);
+    }
+
+    function deleteQuestion() {
+        if(selectedIndex > -1 && confirm("Delete?")) {
+            currentData.splice(selectedIndex, 1);
+            if(currentData.length > 0) {
+                 selectQuestion(Math.max(0, selectedIndex - 1));
+            } else {
+                 selectQuestion(-1);
+            }
+            renderList();
+        }
+    }
+
+    function downloadJSON() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentData, null, 2));
+        const anchor = document.createElement('a');
+        anchor.href = dataStr;
+        anchor.download = `level${currentLevel}.json`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+    }
+</script>
+
+</body>
+</html>
