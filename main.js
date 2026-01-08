@@ -119,9 +119,10 @@ function init() {
     if(startScreen) startScreen.classList.remove('hidden');
 }
 
-function loadLevel(level) {
+async function loadLevel(level) {
     currentLevel = level;
     
+    // Clear previous level objects
     while(scene.children.length > 0){ 
         scene.remove(scene.children[0]); 
     }
@@ -142,12 +143,17 @@ function loadLevel(level) {
     createRoom(theme);
     createInteractiveObjects(level);
     
+    // --- CRITICAL FIX START ---
     if (questionManager) {
-        questionManager.loadLevel(level);
+        // We use the NEW method name 'loadLevelData' and 'await' it
+        // This ensures questions are loaded BEFORE we continue.
+        await questionManager.loadLevelData(level);
+        
         updateHUD();
         const levelDisplay = document.getElementById('level-display');
         if(levelDisplay) levelDisplay.textContent = `Level: ${level} - ${questionManager.getTheme()}`;
     }
+    // --- CRITICAL FIX END ---
 }
 
 // --- TEXTURE GENERATOR ---
